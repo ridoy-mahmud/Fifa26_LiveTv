@@ -1,0 +1,62 @@
+# ── Build outputs ──────────────────────────────────────────────────────────
+dist
+dist-ssr
+.output
+.vinxi
+.nitro
+
+# ── Dependencies ────────────────────────────────────────────────────────────
+node_modules
+.pnp
+.pnp.js
+
+# ── TanStack / Vite cache ───────────────────────────────────────────────────
+.tanstack/**
+.vite
+
+# ── Cloudflare / Wrangler ───────────────────────────────────────────────────
+.wrangler/
+.dev.vars
+.dev.vars.*
+wrangler.toml.local
+
+# ── Environment & secrets ───────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.local
+secrets/
+credentials/
+
+# ── Stream / channel data that must NOT be committed ───────────────────────
+# Raw source JSON dumps used to seed channels (contain live stream URLs).
+# The compiled TypeScript source (channels-data.ts) is intentionally kept
+# so the app builds, but the raw JSON inputs are excluded.
+json/
+*.m3u
+playlists/
+streams/
+exported-channels*.json
+stream-links*.json
+live-links*.json
+
+# ── Logs ────────────────────────────────────────────────────────────────────
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ── Editor & OS ─────────────────────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
