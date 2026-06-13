@@ -5,7 +5,7 @@ import { DEFAULT_CHANNELS, type Channel } from "./channels-data";
 
 // Bump this key whenever DEFAULT_CHANNELS changes significantly so stale
 // localStorage caches are ignored and users get the new full channel list.
-const KEY = "wc2026.channels.v3";
+const KEY = "wc2026.channels.v4";
 
 function load(): Channel[] {
   if (typeof window === "undefined") return DEFAULT_CHANNELS;

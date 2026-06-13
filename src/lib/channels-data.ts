@@ -239,6 +239,51 @@ const _raw: Omit<Channel, "id">[] = [
   { name: "Geography HD", group: "Documentary", logo: "https://imglink.cc/cdn/eEZmseF3Tb.jpg", url: "http://202.70.146.135:8000/play/a05o/index.m3u8" /* proxy-handled */ },
   { name: "Adventure Earth", group: "Documentary", logo: "https://imglink.cc/cdn/eEZmseF3Tb.jpg", url: "https://autentic-adventure-earth-1-eu.rakuten.wurl.tv/playlist.m3u8" },
   { name: "Animal Planet", group: "Documentary", logo: "https://imglink.cc/cdn/ebC033LNf2.png", url: "https://tiger-hub.vercel.app@vodzong.mjunoon.tv:8087/streamtest/Animal-Planet-158-3/playlist.m3u8" },
+
+  // ── FROM brhex_iptv_links.json (verified live streams) ────────────────
+  // Sports
+  { name: "Somoy TV (Live)", group: "Bangladesh", logo: "https://s3.aynaott.com/storage/ece71c1163a377fbe2d93f9d28c34f60", url: "https://live.thebosstv.com:30443/dwlive/Somoy-TV/playlist.m3u8" },
+  { name: "FIFA+ (Samsung)", group: "Football", logo: "https://cdn.plus.fifa.com/images/web/logoFIFA.png", url: "https://c822c659.wurl.com/manifest/f36d25e7e52f1ba8d7e56eb859c636563214f541/U2Ftc3VuZy1pbl9GSUZBUGx1c0VuZ2xpc2hfSExT/a4288c44-0852-418a-874a-6068c1f660a7/2.m3u8" },
+  { name: "Telemundo FHD", group: "Football", logo: "https://logosandtypes.com/wp-content/uploads/2020/08/Telemundo.png", url: "https://nbculocallive.akamaized.net/hls/live/2037499/puertorico/stream1/master.m3u8" },
+  { name: "T Sports (brhex)", group: "Sports", logo: "https://i.ibb.co.com/mrvT7b6G/T-Sports-HD.png", url: "https://tvsen7.aynaott.com/tsports-hd/index.m3u8" },
+  { name: "PTV Sports (brhex)", group: "Sports", logo: "https://api.thextribune.com/files/PTV_Sports_1780982355020_753501f76da1c629.webp", url: "https://tvsen5.aynaott.com/PtvSports/index.m3u8" },
+  { name: "beIN Sports 1 (streamhost)", group: "Sports", logo: "https://images.seeklogo.com/logo-png/48/1/bein-sports-1-logo-png_seeklogo-481583.png", url: "https://1nyaler.streamhostingcdn.top/stream/23/index.m3u8" },
+  { name: "Win Sports", group: "Sports", logo: "https://diem369.com/cdn/shop/files/win-sports-1698354.png", url: "https://1nyaler.streamhostingcdn.top/stream/32/index.m3u8" },
+  { name: "TNT Sports Premium", group: "Sports", logo: "https://upload.wikimedia.org/wikipedia/commons/d/d3/TNT_Sports_logo_2021.png", url: "https://1nyaler.streamhostingcdn.top/stream/30/index.m3u8" },
+  { name: "TyC Sports (Amagi)", group: "Football", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/TyC_Sports_logo.svg/960px-TyC_Sports_logo.svg.png", url: "https://amg26268-amg26268c14-freelivesports-emea-10267.playouts.now.amagi.tv/ts-us-e2-n2/playlist/amg26268-sportsstudio-tycsports-freelivesportsemea/playlist.m3u8" },
+  { name: "beIN SPORTS XTRA", group: "Sports", logo: "https://i.ibb.co/HT49GPmB/XTRA-2.png", url: "https://bein-xtra-bein.amagi.tv/playlist.m3u8" },
+  { name: "beIN XTRA Español", group: "Sports", logo: "https://i.imgur.com/V562tpO.png", url: "https://dc1644a9jazgj.cloudfront.net/beIN_Sports_Xtra_Espanol.m3u8" },
+  { name: "ESPN8 The Ocho", group: "Sports", logo: "https://images.fubo.tv/channel-config-ui/station-logos/on-dark/espn_8_the_ocho_bw.png", url: "https://d3b6q2ou5kp8ke.cloudfront.net/ESPNTheOcho.m3u8" },
+  { name: "ESPN (brhex)", group: "Sports", logo: "https://s3.aynaott.com/storage/b46df1959322aa48d270a6b163234c76", url: "https://tvsen5.aynaott.com/espn/index.m3u8" },
+  { name: "Fox Sports 2 (brhex)", group: "Sports", logo: "https://s3.aynaott.com/storage/da4282cd107cc3d40efadae488b187e5", url: "https://tvsen7.aynaott.com/foxsports2/index.m3u8" },
+  { name: "FOX Sports (1080p)", group: "Sports", logo: "", url: "https://d1jzu95oc8fgt3.cloudfront.net/FOX_Sports.m3u8" },
+  { name: "DAZN Combat", group: "Sports", logo: "https://i.postimg.cc/VsW3Jsrz/logo-DAZN-Combat.png", url: "https://dazn-combat-rakuten.amagi.tv/hls/amagi_hls_data_rakutenAA-dazn-combat-rakuten/CDN/master.m3u8" },
+  { name: "Fox Sports (720p)", group: "Sports", logo: "", url: "https://live-manifest.production-public.tubi.io/live/6035c7fd-efff-4ec7-93dc-aa0c7a58ba47/playlist.m3u8" },
+  { name: "CAZE TV Brazil", group: "Football", logo: "https://images.seeklogo.com/logo-png/61/1/cazetv-logo-png_seeklogo-619708.png", url: "https://dfr80qz435crc.cloudfront.net/MNOP/Amagi/Caze/Caze_TV_BR/Caze_TV.m3u8" },
+  // News
+  { name: "TRT World", group: "News", logo: "https://s3.aynaott.com/storage/f63d4aad95532175f7f44be439f74111", url: "https://tv-trtworld.medya.trt.com.tr/master.m3u8" },
+  { name: "NHK World Japan", group: "News", logo: "https://i.imgur.com/Mhw1Ihk.png", url: "https://master.nhkworld.jp/nhkworld-tv/playlist/live.m3u8" },
+  { name: "NHK World", group: "News", logo: "https://s3.aynaott.com/storage/d969a37a7e1bbd49449ae092d34f0549", url: "https://tvsen6.aynaott.com/nhkworld/index.m3u8" },
+  { name: "SABC News", group: "News", logo: "https://i.imgur.com/H9q3Q9d.png", url: "https://sabconetanw.cdn.mangomolo.com/news/smil:news.stream.smil/chunklist_b250000_t64MjQwcA==.m3u8" },
+  { name: "RTVE 24H", group: "News", logo: "https://i.imgur.com/WTDKOoM.png", url: "https://ztnr.rtve.es/ztnr/1694255.m3u8" },
+  { name: "ERT News HD", group: "News", logo: "https://i.imgur.com/HXbsPfB.png", url: "https://ert-ucdn.broadpeak-aas.com/bpk-tv/ERTNews/default/index.m3u8" },
+  // Bangladesh
+  { name: "BTV CTG", group: "Bangladesh", logo: "https://s3.aynaott.com/storage/00da8a07fb26b2fb79359ee535e4c7bc", url: "https://tvsen6.aynaott.com/btvctg/index.m3u8" },
+  { name: "BTV Chattogram", group: "Bangladesh", logo: "https://i.imgur.com/hvpyuek.png", url: "https://bozztv.com/rongo/rongo-BTVChattagram/index.m3u8" },
+  // Turkey (TRT)
+  { name: "TRT 1", group: "News", logo: "https://i.imgur.com/j786OLG.png", url: "https://tv-trt1.medya.trt.com.tr/master.m3u8" },
+  { name: "TRT Haber", group: "News", logo: "https://i.imgur.com/OVfo8Ab.png", url: "https://tv-trthaber.medya.trt.com.tr/master.m3u8" },
+  // MBC (Middle East)
+  { name: "MBC 1", group: "Entertainment", logo: "https://i.imgur.com/CiA3plN.png", url: "https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-1/15cf99af5de54063fdabfefe66adc075/index.m3u8" },
+  { name: "MBC 4", group: "Entertainment", logo: "https://i.imgur.com/BcXASJp.png", url: "https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-4/24f134f1cd63db9346439e96b86ca6ed/index.m3u8" },
+  { name: "MBC Bollywood", group: "Entertainment", logo: "https://i.imgur.com/TTAGFHG.png", url: "https://shls-mbcbollywood-prod-dub.shahid.net/out/v1/a79c9d7ef2a64a54a64d5c4567b3462a/index.m3u8" },
+  { name: "MBC America", group: "Entertainment", logo: "https://i.imgur.com/RRc23ra.png", url: "https://cdn-us-east-prod-ingest-infra-dacast-com.akamaized.net/624ff8f9-db18-da92-4d42-896fa2ff3eb3/source/index.m3u8" },
+  // Portugal / RTP
+  { name: "RTP 1", group: "Entertainment", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/RTP1_-_Logo_2016.svg/640px-RTP1_-_Logo_2016.svg.png", url: "https://streaming-live.rtp.pt/liverepeater/smil:rtp1HD.smil/playlist.m3u8" },
+  { name: "RTP 2", group: "Entertainment", logo: "https://upload.wikimedia.org/wikipedia/en/4/4d/Rtp2_2016_logo.png", url: "https://streaming-live.rtp.pt/liverepeater/rtp2HD.smil/playlist.m3u8" },
+  { name: "RTP 3", group: "News", logo: "https://upload.wikimedia.org/wikipedia/commons/b/b9/Rtp3.png", url: "https://streaming-live.rtp.pt/livetvhlsDVR/rtpnHDdvr.smil/playlist.m3u8?DVR=" },
+  // SIC Portugal
+  { name: "SIC", group: "Entertainment", logo: "https://i.imgur.com/SPMqiDG.png", url: "https://d1zx6l1dn8vaj5.cloudfront.net/out/v1/b89cc37caa6d418eb423cf092a2ef970/index.m3u8" },
 ];
 
 function slugify(s: string) {

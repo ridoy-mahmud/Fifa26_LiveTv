@@ -1,23 +1,15 @@
-/**
- * HlsPlayer — universal HLS player with automatic CORS-proxy fallback.
- *
- * Many IPTV streams (e.g. http://198.195.239.50:8095/...) work in Chrome
- * extensions because extensions bypass CORS, but browsers block them.
- * This player tries the raw URL first, then automatically retries through a
- * chain of CORS proxies so streams that need it still play seamlessly.
- */
 import { useEffect, useRef, useState, useCallback } from "react";
 import Hls, { type Level } from "hls.js";
 import {
   RefreshCw, Maximize2, Minimize2,
   Volume2, VolumeX, Settings, Check,
-  AlertTriangle, PictureInPicture2,
+  AlertTriangle, PictureInPicture2, Play, Pause,
 } from "lucide-react";
 import { buildUrlChain } from "@/lib/stream-proxy";
 
 interface Props {
   src: string;
-  fallbackUrl?: string; // additional URL to try before giving up
+  fallbackUrl?: string;
   poster?: string;
   className?: string;
 }
@@ -32,19 +24,17 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
-  const volRef = useRef<HTMLInputElement>(null);
-
-  // URL chain: [raw, proxy1, proxy2, ...] or [proxy1, proxy2, ..., raw]
+  // store the full URL chain and current index in refs so no stale closures
   const chainRef = useRef<string[]>([]);
-  const chainIdxRef = useRef(0);     // which URL in the chain we're currently trying
-  const hardRetryRef = useRef(0);    // retries within a single URL (network blips)
+  const idxRef = useRef(0);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [proxyLabel, setProxyLabel] = useState<string | null>(null); // shows "via proxy" badge
+  const [viaProxy, setViaProxy] = useState(false);
+  const [playing, setPlaying] = useState(false);
   const [levels, setLevels] = useState<Level[]>([]);
-  const [curLevel, setCurLevel] = useState<number>(-1);
-  const [activeLevel, setActiveLevel] = useState<number>(-1);
+  const [curLevel, setCurLevel] = useState(-1);
+  const [activeLevel, setActiveLevel] = useState(-1);
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -53,78 +43,47 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
   const [buffered, setBuffered] = useState(0);
   const [played, setPlayed] = useState(0);
 
-  // ── destroy ───────────────────────────────────────────────────────────────
-  const destroy = useCallback(() => {
-    if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-  }, []);
-
-  // ── load one URL from the chain ───────────────────────────────────────────
-  const loadUrl = useCallback((url: string) => {
+  // ─── core: try one URL ─────────────────────────────────────────────────
+  const tryUrl = useCallback((url: string) => {
     const video = videoRef.current;
     if (!video) return;
-    destroy();
-    hardRetryRef.current = 0;
 
-    // Mark if we're going through a proxy
-    const isProxy = url !== src;
-    setProxyLabel(isProxy ? "via proxy" : null);
+    // destroy previous hls instance
+    if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
 
-    video.addEventListener("canplay", () => setLoading(false), { once: true });
+    setViaProxy(url.startsWith("/api/proxy"));
+    setLoading(true);
+    setError(null);
 
-    const onProgress = () => {
-      if (!video.duration) return;
-      if (video.buffered.length)
-        setBuffered((video.buffered.end(video.buffered.length - 1) / video.duration) * 100);
-      setPlayed((video.currentTime / video.duration) * 100);
-    };
-    // Remove old listeners before adding new ones
-    video.removeEventListener("timeupdate", onProgress);
-    video.removeEventListener("progress", onProgress);
-    video.addEventListener("timeupdate", onProgress);
-    video.addEventListener("progress", onProgress);
-
-    if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      // Safari native HLS — can't intercept with hls.js, try raw URL
+    if (!Hls.isSupported()) {
+      // Safari / iOS: native HLS
       video.src = url;
       video.load();
       video.play().catch(() => { });
       return;
     }
 
-    if (!Hls.isSupported()) {
-      setError("HLS not supported in this browser.");
-      setLoading(false);
-      return;
-    }
-
     const hls = new Hls({
-      lowLatencyMode: true,
       enableWorker: true,
-      maxBufferLength: 15,
-      maxMaxBufferLength: 60,
-      maxBufferSize: 20 * 1000 * 1000,
-      maxBufferHole: 0.3,
       startLevel: -1,
-      abrEwmaDefaultEstimate: 2_000_000,
-      abrBandWidthFactor: 0.92,
-      abrBandWidthUpFactor: 0.8,
-      manifestLoadingMaxRetry: 2,   // fail fast → try next proxy
+      lowLatencyMode: false,
+      maxBufferLength: 20,
+      maxMaxBufferLength: 60,
+      manifestLoadingMaxRetry: 2,
       levelLoadingMaxRetry: 2,
       fragLoadingMaxRetry: 3,
-      manifestLoadingRetryDelay: 500,
-      levelLoadingRetryDelay: 500,
-      fragLoadingRetryDelay: 500,
-      progressive: true,
-      liveSyncDurationCount: 3,
-      liveMaxLatencyDurationCount: 10,
+      manifestLoadingTimeOut: 15000,
+      levelLoadingTimeOut: 15000,
+      fragLoadingTimeOut: 20000,
     });
     hlsRef.current = hls;
 
     hls.loadSource(url);
     hls.attachMedia(video);
 
-    hls.on(Hls.Events.MANIFEST_PARSED, (_e, data) => {
+    hls.once(Hls.Events.MANIFEST_PARSED, (_e, data) => {
       setLevels(data.levels);
+      setLoading(false);
       video.play().catch(() => { });
     });
 
@@ -132,87 +91,103 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
 
     hls.on(Hls.Events.ERROR, (_e, data) => {
       if (!data.fatal) return;
-
-      // Try another URL in the chain
-      const nextIdx = chainIdxRef.current + 1;
-      if (nextIdx < chainRef.current.length) {
-        chainIdxRef.current = nextIdx;
-        setLoading(true);
-        setError(null);
-        setLevels([]);
-        loadUrl(chainRef.current[nextIdx]);
-        return;
+      // advance to next URL in chain
+      const next = idxRef.current + 1;
+      if (next < chainRef.current.length) {
+        idxRef.current = next;
+        tryUrl(chainRef.current[next]);
+      } else {
+        setError("Stream unavailable — try another channel.");
+        setLoading(false);
       }
-
-      // Exhausted all URLs
-      setError(
-        data.type === Hls.ErrorTypes.NETWORK_ERROR
-          ? "Stream unavailable. The channel may be offline right now."
-          : "Playback error — please try again."
-      );
-      setLoading(false);
     });
-  }, [src, destroy]);
+  }, []); // no deps — accesses everything through refs
 
-  // ── init: build chain and start ───────────────────────────────────────────
-  const init = useCallback(() => {
-    const video = videoRef.current;
-    if (!video || !src) return;
+  // ─── init when src changes ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!src) return;
+    const chain = buildUrlChain(src, fallbackUrl);
+    chainRef.current = chain;
+    idxRef.current = 0;
 
-    setLoading(true);
-    setError(null);
     setLevels([]);
     setCurLevel(-1);
     setActiveLevel(-1);
     setBuffered(0);
     setPlayed(0);
+    setError(null);
 
-    // Build chain: server proxy + raw + optional fallback + proxy of fallback
-    const chain = buildUrlChain(src);
-    if (fallbackUrl && fallbackUrl !== src) {
-      const fallbackChain = buildUrlChain(fallbackUrl);
-      // Add unique entries from fallback chain
-      for (const u of fallbackChain) {
-        if (!chain.includes(u)) chain.push(u);
-      }
-    }
-    chainRef.current = chain;
-    chainIdxRef.current = 0;
+    tryUrl(chain[0]);
 
-    loadUrl(chain[0]);
-  }, [src, fallbackUrl, loadUrl]);
-
-  useEffect(() => {
-    init();
     return () => {
-      destroy();
+      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
       const v = videoRef.current;
-      if (v) { v.removeAttribute("src"); v.load(); }
+      if (v) { v.pause(); v.removeAttribute("src"); v.load(); }
     };
-  }, [src, fallbackUrl, init, destroy]);
+  }, [src, fallbackUrl, tryUrl]);
 
-  // ── fullscreen + PiP listeners ────────────────────────────────────────────
-  useEffect(() => {
-    const hFS = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", hFS);
-    return () => document.removeEventListener("fullscreenchange", hFS);
-  }, []);
-
+  // ─── progress + play state tracking ─────────────────────────────────────
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    const onEnter = () => setIsPip(true);
-    const onLeave = () => setIsPip(false);
-    video.addEventListener("enterpictureinpicture", onEnter);
-    video.addEventListener("leavepictureinpicture", onLeave);
+    const onTime = () => {
+      if (video.duration > 0) setPlayed((video.currentTime / video.duration) * 100);
+    };
+    const onProg = () => {
+      if (video.buffered.length && video.duration > 0)
+        setBuffered((video.buffered.end(video.buffered.length - 1) / video.duration) * 100);
+    };
+    const onPlay = () => setPlaying(true);
+    const onPause = () => setPlaying(false);
+    video.addEventListener("timeupdate", onTime);
+    video.addEventListener("progress", onProg);
+    video.addEventListener("play", onPlay);
+    video.addEventListener("pause", onPause);
     return () => {
-      video.removeEventListener("enterpictureinpicture", onEnter);
-      video.removeEventListener("leavepictureinpicture", onLeave);
+      video.removeEventListener("timeupdate", onTime);
+      video.removeEventListener("progress", onProg);
+      video.removeEventListener("play", onPlay);
+      video.removeEventListener("pause", onPause);
     };
   }, []);
 
-  // ── actions ───────────────────────────────────────────────────────────────
-  const retry = useCallback(() => init(), [init]);
+  // ─── fullscreen ────────────────────────────────────────────────────────
+  useEffect(() => {
+    const h = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", h);
+    return () => document.removeEventListener("fullscreenchange", h);
+  }, []);
+
+  // ─── PiP ───────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const enter = () => setIsPip(true);
+    const leave = () => setIsPip(false);
+    v.addEventListener("enterpictureinpicture", enter);
+    v.addEventListener("leavepictureinpicture", leave);
+    return () => {
+      v.removeEventListener("enterpictureinpicture", enter);
+      v.removeEventListener("leavepictureinpicture", leave);
+    };
+  }, []);
+
+  // ─── actions ───────────────────────────────────────────────────────────
+  const retry = () => {
+    const chain = buildUrlChain(src, fallbackUrl);
+    chainRef.current = chain;
+    idxRef.current = 0;
+    setError(null);
+    setLevels([]);
+    tryUrl(chain[0]);
+  };
+
+  const togglePlay = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) v.play().catch(() => { });
+    else v.pause();
+  };
 
   const toggleMute = () => {
     const v = videoRef.current;
@@ -224,25 +199,28 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
   const changeVolume = (val: number) => {
     const v = videoRef.current;
     if (!v) return;
-    v.volume = val;
-    v.muted = val === 0;
-    setVolume(val);
-    setMuted(val === 0);
+    v.volume = val; v.muted = val === 0;
+    setVolume(val); setMuted(val === 0);
   };
 
   const toggleFullscreen = () => {
-    if (!wrapRef.current) return;
-    if (!document.fullscreenElement) wrapRef.current.requestFullscreen().catch(() => { });
-    else document.exitFullscreen().catch(() => { });
+    // Fullscreen the outer wrapper so the video (absolute inset-0) fills 100%
+    const el = wrapRef.current;
+    if (!el) return;
+    if (!document.fullscreenElement) {
+      el.requestFullscreen().catch(() => { });
+    } else {
+      document.exitFullscreen().catch(() => { });
+    }
   };
 
   const togglePip = async () => {
-    const video = videoRef.current;
-    if (!video) return;
+    const v = videoRef.current;
+    if (!v) return;
     try {
       if (document.pictureInPictureElement) await document.exitPictureInPicture();
-      else if (document.pictureInPictureEnabled) await video.requestPictureInPicture();
-    } catch { /* not supported */ }
+      else if (document.pictureInPictureEnabled) await v.requestPictureInPicture();
+    } catch { }
   };
 
   const pickQuality = (level: number) => {
@@ -251,209 +229,153 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
     setShowQuality(false);
   };
 
-  const resLabel = (() => {
-    if (levels.length === 0) return "HD";
-    if (curLevel === -1) {
-      const a = activeLevel >= 0 && activeLevel < levels.length ? levels[activeLevel] : null;
-      return a?.height ? `Auto · ${a.height}p` : "Auto";
-    }
-    return qualityLabel(levels[curLevel]);
-  })();
+  const resLabel = levels.length === 0
+    ? "HD"
+    : curLevel === -1
+      ? (levels[activeLevel]?.height ? `Auto · ${levels[activeLevel].height}p` : "Auto")
+      : qualityLabel(levels[curLevel]);
 
-  // ── render ────────────────────────────────────────────────────────────────
+  // ─── render ────────────────────────────────────────────────────────────
   return (
     <div
       ref={wrapRef}
-      className={`relative flex h-full w-full flex-col overflow-hidden rounded-xl bg-black ${className ?? ""}`}
+      className={`group/player relative h-full w-full overflow-hidden bg-black ${isFullscreen ? "" : "rounded-xl"} ${className ?? ""}`}
       onClick={() => showQuality && setShowQuality(false)}
     >
-      {/* video */}
+      {/* Video fills entire container */}
       <video
         ref={videoRef}
         poster={poster}
         playsInline
         autoPlay
         preload="auto"
-        className="min-h-0 flex-1 w-full object-contain"
+        className="absolute inset-0 h-full w-full object-contain"
       />
 
-      {/* ══ CONTROL BAR ══════════════════════════════════════════════════════ */}
-      <div className="relative z-20 flex-shrink-0 bg-gradient-to-t from-black/95 to-black/70 px-3 pt-2 pb-2.5">
-
-        {/* Progress / seek */}
+      {/* ── Control bar — absolute overlay at the bottom ── */}
+      <div className="absolute inset-x-0 bottom-0 z-20 translate-y-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent px-3 pt-8 pb-2.5
+                      opacity-0 transition-all duration-200
+                      group-hover/player:opacity-100
+                      focus-within:opacity-100">
+        {/* Progress */}
         <div className="mb-2 flex items-center gap-2">
-          <div
-            className="relative h-1.5 flex-1 cursor-pointer rounded-full bg-white/10"
+          <div className="relative h-1.5 flex-1 cursor-pointer rounded-full bg-white/10"
             onClick={(e) => {
               const v = videoRef.current;
               if (!v || !v.duration) return;
-              const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-              v.currentTime = ((e.clientX - rect.left) / rect.width) * v.duration;
-            }}
-          >
+              const r = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+              v.currentTime = ((e.clientX - r.left) / r.width) * v.duration;
+            }}>
             <div className="absolute inset-y-0 left-0 rounded-full bg-white/20" style={{ width: `${buffered}%` }} />
             <div className="absolute inset-y-0 left-0 rounded-full bg-primary transition-[width]" style={{ width: `${played}%` }} />
           </div>
-
-          {/* LIVE badge */}
           <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-live/80 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-            <span className="h-1 w-1 animate-pulse-live rounded-full bg-white" />
-            LIVE
+            <span className="h-1 w-1 animate-pulse-live rounded-full bg-white" />LIVE
           </span>
-
-          {/* Proxy indicator */}
-          {proxyLabel && (
-            <span className="shrink-0 rounded-full bg-yellow-500/20 px-2 py-0.5 text-[9px] font-semibold text-yellow-400">
-              {proxyLabel}
-            </span>
+          {viaProxy && (
+            <span className="shrink-0 rounded-full bg-yellow-500/20 px-2 py-0.5 text-[9px] font-semibold text-yellow-400">proxy</span>
           )}
         </div>
 
-        {/* Button row */}
+        {/* Buttons */}
         <div className="flex items-center gap-1.5">
-
-          {/* Mute */}
-          <button
-            onClick={(e) => { e.stopPropagation(); toggleMute(); }}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white/80 hover:bg-white/10 hover:text-white transition"
-            title={muted ? "Unmute" : "Mute"}
-          >
-            {muted || volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          {/* Play / Pause */}
+          <button onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white/90 hover:bg-white/10 hover:text-white transition"
+            title={playing ? "Pause" : "Play"}>
+            {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </button>
 
-          {/* Volume slider */}
-          <input
-            ref={volRef}
-            type="range" min={0} max={1} step={0.05}
-            value={muted ? 0 : volume}
+          <button onClick={(e) => { e.stopPropagation(); toggleMute(); }}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white/80 hover:bg-white/10 hover:text-white transition"
+            title={muted ? "Unmute" : "Mute"}>
+            {muted || volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          </button>
+          <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
             onChange={(e) => changeVolume(Number(e.target.value))}
-            className="h-1 w-16 cursor-pointer accent-primary"
-            title="Volume"
-          />
+            className="h-1 w-16 cursor-pointer accent-primary" />
 
           <div className="flex-1" />
 
-          {/* Quality selector */}
+          {/* Quality */}
           <div className="relative" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => setShowQuality((v) => !v)}
-              className={`flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-bold transition ${showQuality ? "bg-primary text-primary-foreground" : "bg-white/10 text-white hover:bg-white/20"
-                }`}
-              title="Video quality"
-            >
-              <Settings className="h-3.5 w-3.5" />
-              {resLabel}
+            <button onClick={() => setShowQuality(v => !v)}
+              className={`flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-bold transition ${showQuality ? "bg-primary text-primary-foreground" : "bg-white/10 text-white hover:bg-white/20"}`}>
+              <Settings className="h-3.5 w-3.5" />{resLabel}
             </button>
-
             {showQuality && (
-              <div className="absolute bottom-9 right-0 z-50 min-w-[160px] overflow-hidden rounded-xl border border-border bg-card shadow-2xl backdrop-blur-md">
-                <div className="border-b border-border px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Video Quality
-                </div>
-
-                {/* Auto */}
-                <button
-                  onClick={() => pickQuality(-1)}
-                  className={`flex w-full items-center justify-between px-3 py-2.5 text-sm transition hover:bg-secondary/60 ${curLevel === -1 ? "font-bold text-primary" : "text-foreground"
-                    }`}
-                >
+              <div className="absolute bottom-9 right-0 z-50 min-w-[150px] overflow-hidden rounded-xl border border-border bg-card shadow-2xl backdrop-blur-md">
+                <div className="border-b border-border px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Quality</div>
+                <button onClick={() => pickQuality(-1)}
+                  className={`flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-secondary/60 ${curLevel === -1 ? "font-bold text-primary" : ""}`}>
                   <span className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-primary/60" />
-                    Auto
-                    {curLevel === -1 && activeLevel >= 0 && levels[activeLevel]?.height && (
-                      <span className="text-[10px] text-muted-foreground">({levels[activeLevel].height}p)</span>
-                    )}
+                    <span className="h-2 w-2 rounded-full bg-primary/60" />Auto
+                    {curLevel === -1 && levels[activeLevel]?.height &&
+                      <span className="text-[10px] text-muted-foreground">({levels[activeLevel].height}p)</span>}
                   </span>
                   {curLevel === -1 && <Check className="h-3.5 w-3.5 text-primary" />}
                 </button>
-
-                {/* Per-level, highest first */}
-                {[...levels]
-                  .map((l, i) => ({ l, i }))
+                {[...levels].map((l, i) => ({ l, i }))
                   .sort((a, b) => (b.l.height ?? b.l.bitrate ?? 0) - (a.l.height ?? a.l.bitrate ?? 0))
                   .map(({ l, i }) => (
-                    <button
-                      key={i}
-                      onClick={() => pickQuality(i)}
-                      className={`flex w-full items-center justify-between px-3 py-2.5 text-sm transition hover:bg-secondary/60 ${curLevel === i ? "font-bold text-primary" : "text-foreground"
-                        }`}
-                    >
+                    <button key={i} onClick={() => pickQuality(i)}
+                      className={`flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-secondary/60 ${curLevel === i ? "font-bold text-primary" : ""}`}>
                       <span className="flex items-center gap-2">
-                        <span className={`h-2 w-2 rounded-full ${(l.height ?? 0) >= 1080 ? "bg-gold" :
-                          (l.height ?? 0) >= 720 ? "bg-primary" :
-                            (l.height ?? 0) >= 480 ? "bg-blue-400" : "bg-muted-foreground"
-                          }`} />
+                        <span className={`h-2 w-2 rounded-full ${(l.height ?? 0) >= 1080 ? "bg-gold" : (l.height ?? 0) >= 720 ? "bg-primary" : (l.height ?? 0) >= 480 ? "bg-blue-400" : "bg-muted-foreground"}`} />
                         {qualityLabel(l)}
-                        {l.bitrate && (
-                          <span className="text-[10px] text-muted-foreground">
-                            {l.bitrate >= 1_000_000
-                              ? `${(l.bitrate / 1_000_000).toFixed(1)} Mbps`
-                              : `${Math.round(l.bitrate / 1000)} kbps`}
-                          </span>
-                        )}
+                        {l.bitrate && <span className="text-[10px] text-muted-foreground">{l.bitrate >= 1_000_000 ? `${(l.bitrate / 1_000_000).toFixed(1)}Mbps` : `${Math.round(l.bitrate / 1000)}k`}</span>}
                       </span>
                       {curLevel === i && <Check className="h-3.5 w-3.5 text-primary" />}
                     </button>
                   ))}
-
-                {levels.length === 0 && (
-                  <div className="px-3 py-2.5 text-xs text-muted-foreground">Loading stream info…</div>
-                )}
+                {levels.length === 0 && <div className="px-3 py-2 text-xs text-muted-foreground">Detecting…</div>}
               </div>
             )}
           </div>
 
           {/* PiP */}
           {typeof document !== "undefined" && "pictureInPictureEnabled" in document && (
-            <button
-              onClick={(e) => { e.stopPropagation(); togglePip(); }}
-              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition ${isPip ? "bg-primary/30 text-primary" : "text-white/80 hover:bg-white/10 hover:text-white"
-                }`}
-              title={isPip ? "Exit Picture-in-Picture" : "Picture-in-Picture"}
-            >
+            <button onClick={(e) => { e.stopPropagation(); togglePip(); }}
+              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition ${isPip ? "bg-primary/30 text-primary" : "text-white/80 hover:bg-white/10 hover:text-white"}`}
+              title="Picture-in-Picture">
               <PictureInPicture2 className="h-4 w-4" />
             </button>
           )}
 
           {/* Fullscreen */}
-          <button
-            onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
+          <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white/80 hover:bg-white/10 hover:text-white transition"
-            title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-          >
+            title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}>
             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
         </div>
       </div>
 
-      {/* ── Loading overlay ── */}
+      {/* Loading */}
       {loading && !error && (
-        <div className="pointer-events-none absolute inset-0 bottom-[60px] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-3 text-white">
-            <div className="relative h-14 w-14">
+            <div className="relative h-12 w-12">
               <div className="absolute inset-0 rounded-full border-2 border-primary/20" />
               <div className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-primary" />
-              <div className="absolute inset-2 animate-ping rounded-full border border-primary/10" />
             </div>
-            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
-              {chainIdxRef.current > 0 ? `Trying alternate source ${chainIdxRef.current}…` : "Connecting to stream…"}
+            <span className="text-xs font-semibold uppercase tracking-widest text-white/60">
+              {idxRef.current > 0 ? `Trying source ${idxRef.current + 1}…` : "Connecting…"}
             </span>
           </div>
         </div>
       )}
 
-      {/* ── Error overlay ── */}
+      {/* Error */}
       {error && (
-        <div className="absolute inset-0 bottom-[60px] flex items-center justify-center bg-black/80 px-6 text-center">
+        <div className="absolute inset-0 flex items-center justify-center bg-black/80 px-6 text-center">
           <div className="flex flex-col items-center gap-3 text-white">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-live/20 ring-1 ring-live/40">
               <AlertTriangle className="h-7 w-7 text-live" />
             </div>
-            <p className="max-w-xs text-sm leading-relaxed">{error}</p>
-            <button
-              onClick={retry}
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow transition hover:bg-primary-glow hover:scale-105"
-            >
+            <p className="max-w-xs text-sm">{error}</p>
+            <button onClick={retry}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary-glow hover:scale-105 transition">
               <RefreshCw className="h-4 w-4" /> Retry
             </button>
           </div>
