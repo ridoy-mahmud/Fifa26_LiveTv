@@ -1,0 +1,1 @@
+import{j as t,L as e}from"./index-BAn8qabg.js";const o=()=>t.jsxs("div",{className:"mx-auto max-w-2xl px-4 py-24 text-center",children:[t.jsx("h1",{className:"font-display text-3xl font-bold",children:"Match not found"}),t.jsx(e,{to:"/schedule",className:"mt-4 inline-block text-primary hover:underline",children:"← Schedule"})]});export{o as notFoundComponent};

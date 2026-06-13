@@ -1,0 +1,1 @@
+import{j as t}from"./index-BAn8qabg.js";const s=({error:e})=>t.jsxs("div",{className:"mx-auto max-w-2xl px-4 py-24 text-center",children:[t.jsx("h1",{className:"font-display text-3xl font-bold",children:"Couldn't load team"}),t.jsx("p",{className:"mt-2 text-sm text-muted-foreground",children:e.message})]});export{s as errorComponent};
