@@ -13,7 +13,7 @@ export default defineConfig({
     server: { entry: "server" },
   },
   nitro: {
-    // Configure Nitro for Vercel deployment
+    // Explicitly set Vercel preset for deployment
     preset: "vercel",
   },
 });
