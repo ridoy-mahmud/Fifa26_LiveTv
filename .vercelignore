@@ -1,0 +1,52 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+package-lock.json
+bun.lock
+
+# Build outputs
+dist
+.vercel
+.nitro
+.vinxi
+
+# Environment
+.env
+.env.*
+.env.local
+.env.production.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage
+.nyc_output
+
+# Misc
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# Stream data (as per .gitignore)
+json/
+*.m3u
+playlists/
+streams/
+exported-channels*.json
+stream-links*.json
+live-links*.json
+
+# Development
+.puku
+.tanstack
