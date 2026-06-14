@@ -6,7 +6,6 @@ package-lock.json
 bun.lock
 
 # Build outputs
-dist
 dist-ssr
 .nitro
 .vinxi

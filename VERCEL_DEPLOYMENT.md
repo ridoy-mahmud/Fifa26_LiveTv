@@ -53,7 +53,7 @@ Click "Deploy" and Vercel will:
 ### vercel.json
 The project uses a simple `vercel.json` file with essential settings:
 - **Build Command**: `npm run build`
-- **Output Directory**: `.output` (standard TanStack Start output)
+- **Output Directory**: `dist` (standard TanStack Start output)
 - **Framework**: null (let TanStack Start handle everything)
 
 TanStack Start generates the correct build structure automatically.
@@ -61,7 +61,7 @@ TanStack Start generates the correct build structure automatically.
 ### .vercelignore
 Excludes unnecessary files from deployment while keeping essential build artifacts:
 - **Excludes**: Development files, test files, large dependencies, intermediate build outputs
-- **Includes**: `.output/` (essential for deployment)
+- **Includes**: `dist/` (essential for deployment)
 - **Important**: Unlike `.gitignore`, `.vercelignore` should NOT exclude the build output directory
 
 ### .nvmrc
