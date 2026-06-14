@@ -7,7 +7,6 @@ bun.lock
 
 # Build outputs
 dist
-.vercel
 .nitro
 .vinxi
 

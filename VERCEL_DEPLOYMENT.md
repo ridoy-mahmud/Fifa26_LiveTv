@@ -58,6 +58,12 @@ The project includes a simplified `vercel.json` file with essential settings:
 
 Nitro's Vercel preset automatically handles routing, caching, and serverless function configuration.
 
+### .vercelignore
+Excludes unnecessary files from deployment while keeping essential build artifacts:
+- **Excludes**: Development files, test files, large dependencies
+- **Includes**: `.vercel/output/` (essential for deployment)
+- **Important**: Unlike `.gitignore`, `.vercelignore` should NOT exclude `.vercel/output` as Vercel needs these build artifacts
+
 ### .nvmrc
 Specifies Node.js version 20 for consistent builds across environments.
 
@@ -109,6 +115,12 @@ This ensures the build output is compatible with Vercel's serverless functions.
 - Vercel free tier has 8GB memory limit
 - Large node_modules can cause issues
 - Try adding `.vercelignore` to exclude unnecessary files
+
+**Issue: Config file not found error**
+- Ensure `.vercelignore` does NOT exclude `.vercel/output`
+- The `.vercel/output/config.json` must be available for deployment
+- `.vercel/output` contains essential build artifacts that Vercel needs
+- `.gitignore` should still exclude `.vercel` (don't commit build artifacts)
 
 #### Debug Steps
 
