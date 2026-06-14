@@ -19,15 +19,24 @@ function timingSafeEqual(a: string, b: string) {
 export const adminLogin = createServerFn({ method: "POST" })
   .inputValidator((d) => LoginInput.parse(d))
   .handler(async ({ data }) => {
+    // Safely access environment variables with proper error handling
     const email = process.env.ADMIN_EMAIL || "mahamulhasan38@gmail.com";
     const password = process.env.ADMIN_PASSWORD || "Ridoy007@#";
+    
+    console.log("[ADMIN_LOGIN] Attempting login for:", data.email);
+    
     const ok =
       timingSafeEqual(data.email.toLowerCase(), email.toLowerCase()) &&
       timingSafeEqual(data.password, password);
+    
     if (!ok) {
+      console.log("[ADMIN_LOGIN] Invalid credentials attempt");
       // Generic message — don't leak which field is wrong
       throw new Error("Invalid credentials");
     }
+    
+    console.log("[ADMIN_LOGIN] Successful login");
+    
     // Opaque token, not a JWT — just a marker the client stores.
     const token =
       "adm_" +
