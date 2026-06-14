@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Radio, Wifi, Signal, Tv2 } from "lucide-react";
+import { Radio, Wifi, Signal, Tv2, ChevronDown, X } from "lucide-react";
 import { HlsPlayer } from "@/components/player/HlsPlayer";
 import { ChannelList } from "@/components/player/ChannelList";
 import { useChannels } from "@/lib/channels-store";
@@ -22,6 +22,7 @@ export const Route = createFileRoute("/live")({
 function LivePage() {
   const { channels } = useChannels();
   const [active, setActive] = useState<Channel | null>(null);
+  const [showMobileChannels, setShowMobileChannels] = useState(false);
   const playerRef = useRef<HTMLDivElement>(null);
 
   // Pick default channel on mount
@@ -47,6 +48,7 @@ function LivePage() {
   }, [active]);
 
   const playerHeight = "min(calc(100vh - 200px), 74vh)";
+  const mobilePlayerHeight = "min(calc(100vh - 280px), 56vh)";
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
@@ -74,7 +76,7 @@ function LivePage() {
       <div ref={playerRef} className="grid gap-4 lg:grid-cols-[1fr_340px]">
         <div
           className="relative overflow-hidden rounded-xl border border-border bg-black shadow-card"
-          style={{ height: playerHeight }}
+          style={{ height: 'min(calc(100vh - 280px), 56vh)', minHeight: '300px' }}
         >
           {active ? (
             <HlsPlayer key={active.id} src={active.url} fallbackUrl={active.fallbackUrl} poster={active.logo || FALLBACK_LOGO} />
@@ -85,14 +87,66 @@ function LivePage() {
           )}
         </div>
 
-        <div style={{ height: playerHeight }} className="min-h-[400px]">
+        <div className="hidden lg:block" style={{ height: playerHeight }}>
           <ChannelList
             channels={channels}
             activeId={active?.id}
             onPick={pickChannel}
+            fullHeight={true}
           />
         </div>
       </div>
+
+      {/* Mobile channel selector */}
+      <div className="lg:hidden mt-4">
+        <button
+          onClick={() => setShowMobileChannels(true)}
+          className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 text-left hover:border-primary/50 transition"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 overflow-hidden rounded-lg bg-background ring-1 ring-border">
+              <img
+                src={active?.logo || FALLBACK_LOGO}
+                alt={active?.name || "Select channel"}
+                className="h-full w-full object-contain p-1"
+              />
+            </div>
+            <div>
+              <div className="text-sm font-semibold">{active?.name || "Select a channel"}</div>
+              <div className="text-xs text-muted-foreground">{active?.group || "Choose from list"}</div>
+            </div>
+          </div>
+          <ChevronDown className="h-5 w-5 text-muted-foreground" />
+        </button>
+      </div>
+
+      {/* Mobile channel modal */}
+      {showMobileChannels && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm lg:hidden">
+          <div className="flex h-full flex-col">
+            <div className="flex items-center justify-between border-b border-border bg-card p-4">
+              <h2 className="font-display text-lg font-bold">Select Channel</h2>
+              <button
+                onClick={() => setShowMobileChannels(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-secondary"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <ChannelList
+                channels={channels}
+                activeId={active?.id}
+                onPick={(c) => {
+                  pickChannel(c);
+                  setShowMobileChannels(false);
+                }}
+                fullHeight={true}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* All channels grid — grouped by category */}
       <AllChannelsGrid channels={channels} activeId={active?.id} onPick={pickChannel} />
@@ -145,10 +199,10 @@ function AllChannelsGrid({
       </div>
 
       {/* Group filter tabs */}
-      <div className="mb-5 flex flex-wrap gap-1.5">
+      <div className="mb-5 flex flex-wrap gap-2">
         <button
           onClick={() => setActiveGroup("All")}
-          className={`rounded-full px-3 py-1 text-xs font-semibold transition ${activeGroup === "All"
+          className={`rounded-full px-4 py-2 text-xs font-semibold transition touch-manipulation ${activeGroup === "All"
             ? "bg-primary text-primary-foreground"
             : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"
             }`}
@@ -159,7 +213,7 @@ function AllChannelsGrid({
           <button
             key={g}
             onClick={() => setActiveGroup(g)}
-            className={`rounded-full px-3 py-1 text-xs font-semibold transition ${activeGroup === g
+            className={`rounded-full px-4 py-2 text-xs font-semibold transition touch-manipulation ${activeGroup === g
               ? "bg-primary text-primary-foreground"
               : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"
               }`}
@@ -205,7 +259,7 @@ function ChannelGrid({
   onPick: (c: Channel) => void;
 }) {
   return (
-    <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
+    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
       {channels.map((c) => {
         const isActive = c.id === activeId;
         return (
@@ -213,7 +267,7 @@ function ChannelGrid({
             key={c.id}
             onClick={() => onPick(c)}
             title={c.name}
-            className={`group relative flex flex-col items-center gap-1.5 rounded-xl border p-2 transition-all hover:-translate-y-0.5 hover:shadow-glow ${isActive
+            className={`group relative flex flex-col items-center gap-2 rounded-xl border p-3 transition-all hover:-translate-y-0.5 hover:shadow-glow sm:p-2 sm:gap-1.5 ${isActive
               ? "border-primary/60 bg-primary/10 shadow-glow"
               : "border-border bg-card hover:border-primary/40"
               }`}
@@ -226,7 +280,7 @@ function ChannelGrid({
               </span>
             )}
             {/* logo */}
-            <div className="h-11 w-11 overflow-hidden rounded-lg bg-background ring-1 ring-border">
+            <div className="h-12 w-12 overflow-hidden rounded-lg bg-background ring-1 ring-border sm:h-11 sm:w-11">
               <img
                 src={c.logo || FALLBACK_LOGO}
                 alt={c.name}
@@ -237,7 +291,7 @@ function ChannelGrid({
               />
             </div>
             {/* name */}
-            <span className={`line-clamp-2 w-full text-center text-[10px] font-semibold leading-tight ${isActive ? "text-primary" : "text-foreground/80"
+            <span className={`line-clamp-2 w-full text-center text-[11px] font-semibold leading-tight sm:text-[10px] ${isActive ? "text-primary" : "text-foreground/80"
               }`}>
               {c.name}
             </span>

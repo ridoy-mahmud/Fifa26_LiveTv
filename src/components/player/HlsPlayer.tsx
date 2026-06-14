@@ -40,6 +40,7 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPip, setIsPip] = useState(false);
   const [showQuality, setShowQuality] = useState(false);
+  const [showControls, setShowControls] = useState(false);
   const [buffered, setBuffered] = useState(0);
   const [played, setPlayed] = useState(0);
 
@@ -172,6 +173,15 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
     };
   }, []);
 
+  // ─── Auto-hide controls on mobile after inactivity ─────────────────────
+  useEffect(() => {
+    if (!showControls) return;
+    const timer = setTimeout(() => {
+      setShowControls(false);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [showControls]);
+
   // ─── actions ───────────────────────────────────────────────────────────
   const retry = () => {
     const chain = buildUrlChain(src, fallbackUrl);
@@ -240,7 +250,13 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
     <div
       ref={wrapRef}
       className={`group/player relative h-full w-full overflow-hidden bg-black ${isFullscreen ? "" : "rounded-xl"} ${className ?? ""}`}
-      onClick={() => showQuality && setShowQuality(false)}
+      onClick={() => {
+        if (showQuality) {
+          setShowQuality(false);
+        } else {
+          setShowControls(v => !v);
+        }
+      }}
     >
       {/* Video fills entire container */}
       <video
@@ -253,13 +269,14 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
       />
 
       {/* ── Control bar — absolute overlay at the bottom ── */}
-      <div className="absolute inset-x-0 bottom-0 z-20 translate-y-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent px-3 pt-8 pb-2.5
-                      opacity-0 transition-all duration-200
-                      group-hover/player:opacity-100
-                      focus-within:opacity-100">
+      <div className={`absolute inset-x-0 bottom-0 z-20 translate-y-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent px-3 pt-8 pb-2.5
+                      transition-all duration-200
+                      md:opacity-0 md:group-hover/player:opacity-100
+                      focus-within:opacity-100
+                      ${showControls ? 'opacity-100' : 'md:opacity-0'}`}>
         {/* Progress */}
         <div className="mb-2 flex items-center gap-2">
-          <div className="relative h-1.5 flex-1 cursor-pointer rounded-full bg-white/10"
+          <div className="relative h-2 flex-1 cursor-pointer rounded-full bg-white/10 md:h-1.5"
             onClick={(e) => {
               const v = videoRef.current;
               if (!v || !v.duration) return;
@@ -281,33 +298,35 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
         <div className="flex items-center gap-1.5">
           {/* Play / Pause */}
           <button onClick={(e) => { e.stopPropagation(); togglePlay(); }}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white/90 hover:bg-white/10 hover:text-white transition"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-white/90 hover:bg-white/10 hover:text-white transition md:h-7 md:w-7"
             title={playing ? "Pause" : "Play"}>
-            {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            {playing ? <Pause className="h-5 w-5 md:h-4 md:w-4" /> : <Play className="h-5 w-5 md:h-4 md:w-4" />}
           </button>
 
           <button onClick={(e) => { e.stopPropagation(); toggleMute(); }}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white/80 hover:bg-white/10 hover:text-white transition"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-white/80 hover:bg-white/10 hover:text-white transition md:h-7 md:w-7"
             title={muted ? "Unmute" : "Mute"}>
-            {muted || volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            {muted || volume === 0 ? <VolumeX className="h-5 w-5 md:h-4 md:w-4" /> : <Volume2 className="h-5 w-5 md:h-4 md:w-4" />}
           </button>
-          <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
-            onChange={(e) => changeVolume(Number(e.target.value))}
-            className="h-1 w-16 cursor-pointer accent-primary" />
+          <div className="hidden md:block">
+            <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
+              onChange={(e) => changeVolume(Number(e.target.value))}
+              className="h-1 w-16 cursor-pointer accent-primary" />
+          </div>
 
           <div className="flex-1" />
 
           {/* Quality */}
           <div className="relative" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setShowQuality(v => !v)}
-              className={`flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-bold transition ${showQuality ? "bg-primary text-primary-foreground" : "bg-white/10 text-white hover:bg-white/20"}`}>
-              <Settings className="h-3.5 w-3.5" />{resLabel}
+              className={`flex h-10 items-center gap-1.5 rounded-md px-3 text-xs font-bold transition md:h-7 md:px-2.5 ${showQuality ? "bg-primary text-primary-foreground" : "bg-white/10 text-white hover:bg-white/20"}`}>
+              <Settings className="h-4 w-4 md:h-3.5 md:w-3.5" />{resLabel}
             </button>
             {showQuality && (
-              <div className="absolute bottom-9 right-0 z-50 min-w-[150px] overflow-hidden rounded-xl border border-border bg-card shadow-2xl backdrop-blur-md">
+              <div className="absolute bottom-12 right-0 z-50 min-w-[160px] overflow-hidden rounded-xl border border-border bg-card shadow-2xl backdrop-blur-md md:bottom-9">
                 <div className="border-b border-border px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Quality</div>
                 <button onClick={() => pickQuality(-1)}
-                  className={`flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-secondary/60 ${curLevel === -1 ? "font-bold text-primary" : ""}`}>
+                  className={`flex w-full items-center justify-between px-3 py-3 text-sm hover:bg-secondary/60 md:py-2 ${curLevel === -1 ? "font-bold text-primary" : ""}`}>
                   <span className="flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-primary/60" />Auto
                     {curLevel === -1 && levels[activeLevel]?.height &&
@@ -319,7 +338,7 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
                   .sort((a, b) => (b.l.height ?? b.l.bitrate ?? 0) - (a.l.height ?? a.l.bitrate ?? 0))
                   .map(({ l, i }) => (
                     <button key={i} onClick={() => pickQuality(i)}
-                      className={`flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-secondary/60 ${curLevel === i ? "font-bold text-primary" : ""}`}>
+                      className={`flex w-full items-center justify-between px-3 py-3 text-sm hover:bg-secondary/60 md:py-2 ${curLevel === i ? "font-bold text-primary" : ""}`}>
                       <span className="flex items-center gap-2">
                         <span className={`h-2 w-2 rounded-full ${(l.height ?? 0) >= 1080 ? "bg-gold" : (l.height ?? 0) >= 720 ? "bg-primary" : (l.height ?? 0) >= 480 ? "bg-blue-400" : "bg-muted-foreground"}`} />
                         {qualityLabel(l)}
@@ -328,7 +347,7 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
                       {curLevel === i && <Check className="h-3.5 w-3.5 text-primary" />}
                     </button>
                   ))}
-                {levels.length === 0 && <div className="px-3 py-2 text-xs text-muted-foreground">Detecting…</div>}
+                {levels.length === 0 && <div className="px-3 py-3 text-xs text-muted-foreground md:py-2">Detecting…</div>}
               </div>
             )}
           </div>
@@ -336,17 +355,17 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
           {/* PiP */}
           {typeof document !== "undefined" && "pictureInPictureEnabled" in document && (
             <button onClick={(e) => { e.stopPropagation(); togglePip(); }}
-              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition ${isPip ? "bg-primary/30 text-primary" : "text-white/80 hover:bg-white/10 hover:text-white"}`}
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md transition md:h-7 md:w-7 ${isPip ? "bg-primary/30 text-primary" : "text-white/80 hover:bg-white/10 hover:text-white"}`}
               title="Picture-in-Picture">
-              <PictureInPicture2 className="h-4 w-4" />
+              <PictureInPicture2 className="h-5 w-5 md:h-4 md:w-4" />
             </button>
           )}
 
           {/* Fullscreen */}
           <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white/80 hover:bg-white/10 hover:text-white transition"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-white/80 hover:bg-white/10 hover:text-white transition md:h-7 md:w-7"
             title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}>
-            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            {isFullscreen ? <Minimize2 className="h-5 w-5 md:h-4 md:w-4" /> : <Maximize2 className="h-5 w-5 md:h-4 md:w-4" />}
           </button>
         </div>
       </div>

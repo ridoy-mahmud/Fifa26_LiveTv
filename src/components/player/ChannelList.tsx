@@ -7,12 +7,13 @@ interface Props {
   channels: Channel[];
   activeId?: string;
   onPick: (c: Channel) => void;
+  fullHeight?: boolean;
 }
 
 const TABS = ["Top 10", "All", "Football", "Sports", "Cricket", "Entertainment", "Movies", "Bangladesh", "Cartoon", "Documentary", "News"] as const;
 type Tab = (typeof TABS)[number];
 
-export function ChannelList({ channels, activeId, onPick }: Props) {
+export function ChannelList({ channels, activeId, onPick, fullHeight = false }: Props) {
   const [tab, setTab] = useState<Tab>("Top 10");
   const [q, setQ] = useState("");
 
@@ -28,7 +29,7 @@ export function ChannelList({ channels, activeId, onPick }: Props) {
   }, [channels, tab, q]);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card">
+    <div className={`flex flex-col overflow-hidden rounded-xl border border-border bg-card ${fullHeight ? 'h-full' : 'h-full'}`}>
       <div className="border-b border-border p-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
