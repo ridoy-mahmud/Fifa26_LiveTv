@@ -7,9 +7,10 @@ bun.lock
 
 # Build outputs
 dist
-.output
+dist-ssr
 .nitro
 .vinxi
+.vercel
 
 # Environment
 .env
@@ -38,7 +39,7 @@ coverage
 *.seed
 *.pid.lock
 
-# Stream data (as per .gitignore)
+# Stream data
 json/
 *.m3u
 playlists/

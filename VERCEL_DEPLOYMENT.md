@@ -51,18 +51,18 @@ Click "Deploy" and Vercel will:
 ## Configuration Files
 
 ### vercel.json
-The project includes a simplified `vercel.json` file with essential settings:
+The project uses a simple `vercel.json` file with essential settings:
 - **Build Command**: `npm run build`
-- **Output Directory**: `.vercel/output`
-- **Framework**: null (let Nitro handle routing)
+- **Output Directory**: `.output` (standard TanStack Start output)
+- **Framework**: null (let TanStack Start handle everything)
 
-Nitro's Vercel preset automatically handles routing, caching, and serverless function configuration.
+TanStack Start generates the correct build structure automatically.
 
 ### .vercelignore
 Excludes unnecessary files from deployment while keeping essential build artifacts:
-- **Excludes**: Development files, test files, large dependencies
-- **Includes**: `.vercel/output/` (essential for deployment)
-- **Important**: Unlike `.gitignore`, `.vercelignore` should NOT exclude `.vercel/output` as Vercel needs these build artifacts
+- **Excludes**: Development files, test files, large dependencies, intermediate build outputs
+- **Includes**: `.output/` (essential for deployment)
+- **Important**: Unlike `.gitignore`, `.vercelignore` should NOT exclude the build output directory
 
 ### .nvmrc
 Specifies Node.js version 20 for consistent builds across environments.
@@ -71,14 +71,16 @@ Specifies Node.js version 20 for consistent builds across environments.
 Includes `engines` field specifying Node.js >= 20.0.0 requirement.
 
 ### vite.config.ts
-The Vite configuration is set up for Vercel deployment:
+The Vite configuration uses standard TanStack Start defaults with minimal customization:
 ```typescript
-nitro: {
-  preset: "vercel",
-}
+export default defineConfig({
+  tanstackStart: {
+    // Use default TanStack Start server configuration
+  },
+});
 ```
 
-This ensures the build output is compatible with Vercel's serverless functions.
+This ensures maximum compatibility and stability for Vercel deployment.
 
 ## Post-Deployment Checklist
 

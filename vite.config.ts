@@ -8,9 +8,6 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
   tanstackStart: {
-    // Use default TanStack Start server for better Vercel compatibility
-  },
-  nitro: {
-    preset: "vercel",
+    // Use default TanStack Start server configuration
   },
 });
