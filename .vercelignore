@@ -9,7 +9,9 @@ bun.lock
 dist-ssr
 .nitro
 .vinxi
-.vercel
+# NOTE: do NOT ignore `.vercel` — it contains the build output (`config.json`,
+# `static/`, and the serverless functions) that Vercel needs at runtime.
+# `.gitignore` still excludes `.vercel` so the build artifacts aren't committed.
 
 # Environment
 .env

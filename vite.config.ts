@@ -10,4 +10,10 @@ export default defineConfig({
   tanstackStart: {
     // Use default TanStack Start server configuration
   },
+  // Pin the Nitro preset to Vercel so the build emits a `.vercel/output/`
+  // directory that Vercel can serve. Without this, Nitro skips its Vercel
+  // adapter and the deployment returns 404 NOT_FOUND at runtime.
+  nitro: {
+    preset: "vercel",
+  },
 });
