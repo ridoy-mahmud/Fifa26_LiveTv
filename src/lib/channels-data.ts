@@ -3,6 +3,7 @@
 //   • json/kb_tv_channels.json
 //   • json/live_tv_channels.json
 //   • json/streaming_links.json
+//   • json/arifultv_m3u8_links.json  (added 2026-06-18, de-duplicated by URL)
 // De-duplicated by URL. Editable by admin via /admin (localStorage override).
 
 export type ChannelGroup =
@@ -284,6 +285,26 @@ const _raw: Omit<Channel, "id">[] = [
   { name: "RTP 3", group: "News", logo: "https://upload.wikimedia.org/wikipedia/commons/b/b9/Rtp3.png", url: "https://streaming-live.rtp.pt/livetvhlsDVR/rtpnHDdvr.smil/playlist.m3u8?DVR=" },
   // SIC Portugal
   { name: "SIC", group: "Entertainment", logo: "https://i.imgur.com/SPMqiDG.png", url: "https://d1zx6l1dn8vaj5.cloudfront.net/out/v1/b89cc37caa6d418eb423cf092a2ef970/index.m3u8" },
+
+  // ── ARIFUL TV (added 2026-06-18) ────────────────────────────────────────
+  // Imported from json/arifultv_m3u8_links.json. The "WIN Sports" entry was
+  // skipped because the same stream URL already exists in the TYC/Sports
+  // cluster above (1nyaler.streamhostingcdn.top/stream/32/index.m3u8).
+  // Go Live HD — Bangladeshi sports/FIFA broadcast (CloudFront CDN, RTB)
+  { name: "Go Live HD", group: "Sports", logo: "https://i.ibb.co.com/7tsYPLS8/Go-Live.png", url: "https://d1211whpimeups.cloudfront.net/smil:rtbgo/chunklist_b4096000_slENG.m3u8", fallbackUrl: "https://d1211whpimeups.cloudfront.net/smil:rtbgo/playlist.m3u8" },
+  // beIN Sports 2 Max (adabmedia CDN, generic football feed)
+  { name: "Bein Sports 2 Max", group: "Sports", logo: "https://i.ibb.co.com/wF0f7Y3B/Bein-Sports-2-Max.png", url: "https://cp11.adabmedia.com/hls2/sport.m3u8" },
+  // Telemundo (alternate feed — the existing "Telemundo FHD" already covers NBC feed)
+  { name: "Telemundo (Ariful)", group: "Football", logo: "https://i.ibb.co.com/JWTsyM8Q/Telemundo.png", url: "https://daffodil.thelistener.pk/tele.m3u8" },
+  // Somoy TV HD (chunks playlist — distinct from the existing "Somoy TV (Live)" entry
+  // which uses a different "playlist.m3u8" path on the same CDN; higher-bitrate feed)
+  { name: "Somoy TV HD", group: "Bangladesh", logo: "https://i.ibb.co.com/hFXKPxCv/Somoy-TV.png", url: "https://live.thebosstv.com:30443/dwlive/Somoy-TV/chunks.m3u8", fallbackUrl: "https://live.thebosstv.com:30443/dwlive/Somoy-TV/playlist.m3u8" },
+  // Z Bangla Sonar SD (Colors HD / Zee Bangla family, bpk-tv CDN)
+  { name: "Z Bangla Sonar SD", group: "Entertainment", logo: "https://i.ibb.co.com/6c1qKVNs/Z-Bangla-Sonar.png", url: "https://d1g8wgjurz8via.cloudfront.net/bpk-tv/ColorsHD/default/Zeebanglahd.m3u8" },
+  // TYC Sports (stream 84 — different feed from the existing amg26268 entries)
+  { name: "TYC Sports (Ariful)", group: "Football", logo: "https://i.ibb.co.com/hFk6bssh/TYC-Sports.png", url: "https://1nyaler.streamhostingcdn.top/stream/84/index.m3u8" },
+  // D Sports (RTB Go feed — main playlist; Go Live HD above uses the 4 Mbps bitrate variant)
+  { name: "D Sports", group: "Sports", logo: "https://assets.football-logos.cc/logos/tournaments/1500x1500/fifa-world-cup-2026--white.10e0b37b.png", url: "https://d1211whpimeups.cloudfront.net/smil:rtbgo/playlist.m3u8" },
 ];
 
 function slugify(s: string) {

@@ -4,6 +4,7 @@ import {
   RefreshCw, Maximize2, Minimize2,
   Volume2, VolumeX, Settings, Check,
   AlertTriangle, PictureInPicture2, Play, Pause,
+  Rewind, FastForward,
 } from "lucide-react";
 import { buildUrlChain } from "@/lib/stream-proxy";
 
@@ -42,8 +43,51 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
   const [showQuality, setShowQuality] = useState(false);
   const [buffered, setBuffered] = useState(0);
   const [played, setPlayed] = useState(0);
+  // ── seek / time-tracking state ───────────────────────────────────────────
+  // For VOD (finite duration) we render a regular timeline. For live streams
+  // we expose a "rewind window" equal to the currently buffered back-buffer
+  // so users can re-watch the last 20-60 seconds of a live broadcast. The
+  // default hls.js back-buffer is 30s; we set 90s via hls.config below.
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [seekableStart, setSeekableStart] = useState(0);
+  const [seekableEnd, setSeekableEnd] = useState(0);
+  const [isLive, setIsLive] = useState(true);
+
+  // transient seek-feedback overlay (arrow + seconds)
+  type SeekFlash = { dir: -1 | 1; secs: number; key: number } | null;
+  const [seekFlash, setSeekFlash] = useState<SeekFlash>(null);
+  const seekFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // swipe tracking for mobile
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const touchStartT = useRef<number>(0);
+  const lastTapAt = useRef<{ t: number; x: number }>({ t: 0, x: 0 });
+
   // controls visibility — always visible on mobile, hover-or-tap on desktop
   const [controlsVisible, setControlsVisible] = useState(true);
+
+  // ── seek helper ─────────────────────────────────────────────────────────
+  // dir = -1 for back, +1 for forward, secs = seconds. Shows a flash overlay.
+  const seekBy = useCallback((dir: -1 | 1, secs: number) => {
+    const v = videoRef.current;
+    if (!v) return;
+    // VOD: clamp to [0, duration]. Live: clamp to [seekableStart, seekableEnd]
+    // which is the playable back-buffer range exposed by hls.js.
+    const s = v.seekable;
+    const start = s.length > 0 ? s.start(0) : 0;
+    const end = s.length > 0 ? s.end(s.length - 1) : (isFinite(v.duration) ? v.duration : v.currentTime);
+    const target = Math.max(start, Math.min(end, v.currentTime + dir * secs));
+    v.currentTime = target;
+    setCurrentTime(target);
+    showControls();
+    // flash overlay
+    if (seekFlashTimer.current) clearTimeout(seekFlashTimer.current);
+    const key = Date.now();
+    setSeekFlash({ dir, secs, key });
+    seekFlashTimer.current = setTimeout(() => setSeekFlash((f) => (f && f.key === key ? null : f)), 700);
+  }, [showControls]);
 
   // ── show controls and start auto-hide timer ──────────────────────────────
   const showControls = useCallback(() => {
@@ -83,6 +127,10 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
       lowLatencyMode: false,
       maxBufferLength: 20,
       maxMaxBufferLength: 60,
+      // keep ~90s of back-buffer so live rewind (-10/-30s) has a usable range.
+      // Without this hls.js trims to 30s by default which makes ArrowLeft feel
+      // like a no-op on live channels.
+      backBufferLength: 90,
       manifestLoadingMaxRetry: 2,
       levelLoadingMaxRetry: 2,
       fragLoadingMaxRetry: 3,
@@ -131,23 +179,74 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
     };
   }, [src, fallbackUrl, tryUrl]);
 
-  // ─── progress + play/pause tracking ────────────────────────────────────
+  // ─── progress + play/pause + duration/seekable tracking ───────────────
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    const onTime = () => { if (video.duration > 0) setPlayed((video.currentTime / video.duration) * 100); };
-    const onProg = () => { if (video.buffered.length && video.duration > 0) setBuffered((video.buffered.end(video.buffered.length - 1) / video.duration) * 100); };
+    const refreshSeekable = () => {
+      const s = video.seekable;
+      if (s.length > 0) {
+        setSeekableStart(s.start(0));
+        setSeekableEnd(s.end(s.length - 1));
+      } else {
+        setSeekableStart(0);
+        setSeekableEnd(video.duration || 0);
+      }
+    };
+    const onTime = () => {
+      setCurrentTime(video.currentTime);
+      const dur = video.duration;
+      setDuration(isFinite(dur) ? dur : 0);
+      // percentage: 0% = oldest seekable point, 100% = newest (live edge or VOD end)
+      const s = video.seekable;
+      if (s.length > 0) {
+        const start = s.start(0);
+        const end = s.end(s.length - 1);
+        const range = end - start;
+        if (range > 0) {
+          setPlayed(((video.currentTime - start) / range) * 100);
+          setBuffered(((video.buffered.length ? video.buffered.end(video.buffered.length - 1) : end) - start) / range * 100);
+        } else {
+          setPlayed(0); setBuffered(0);
+        }
+      } else if (dur > 0 && isFinite(dur)) {
+        setPlayed((video.currentTime / dur) * 100);
+      }
+    };
+    const onProg = () => {
+      // already covered by onTime; kept for safety on browsers that don't fire timeupdate for buffered updates
+      const s = video.seekable;
+      if (s.length > 0) {
+        const start = s.start(0);
+        const end = s.end(s.length - 1);
+        const range = end - start;
+        if (range > 0) {
+          setBuffered(((video.buffered.length ? video.buffered.end(video.buffered.length - 1) : end) - start) / range * 100);
+        }
+      }
+    };
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
+    const onMeta = () => {
+      setIsLive(!isFinite(video.duration));
+      setDuration(isFinite(video.duration) ? video.duration : 0);
+      refreshSeekable();
+    };
     video.addEventListener("timeupdate", onTime);
     video.addEventListener("progress", onProg);
     video.addEventListener("play", onPlay);
     video.addEventListener("pause", onPause);
+    video.addEventListener("loadedmetadata", onMeta);
+    video.addEventListener("durationchange", onMeta);
+    video.addEventListener("seeked", refreshSeekable);
     return () => {
       video.removeEventListener("timeupdate", onTime);
       video.removeEventListener("progress", onProg);
       video.removeEventListener("play", onPlay);
       video.removeEventListener("pause", onPause);
+      video.removeEventListener("loadedmetadata", onMeta);
+      video.removeEventListener("durationchange", onMeta);
+      video.removeEventListener("seeked", refreshSeekable);
     };
   }, []);
 
@@ -173,7 +272,54 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
   }, []);
 
   // cleanup timer on unmount
-  useEffect(() => () => { if (hideTimer.current) clearTimeout(hideTimer.current); }, []);
+  useEffect(() => () => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    if (seekFlashTimer.current) clearTimeout(seekFlashTimer.current);
+  }, []);
+
+  // ─── keyboard shortcuts (VLC / YouTube style) ────────────────────────────
+  //   ← / →       : ±5s
+  //   Shift+← / → : ±30s
+  //   , / .       : ±1 frame (≈ 1/25s)
+  //   Home        : jump to live edge (live streams)
+  // Skipped when focus is in an editable element so the admin login isn't
+  // hijacked while typing.
+  useEffect(() => {
+    const isEditable = (el: EventTarget | null) => {
+      const t = el as HTMLElement | null;
+      if (!t) return false;
+      const tag = t.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t.isContentEditable;
+    };
+    const onKey = (ev: KeyboardEvent) => {
+      // only react when the player wrapper is the most relevant focus
+      if (isEditable(ev.target)) return;
+      const v = videoRef.current;
+      if (!v) return;
+      switch (ev.key) {
+        case "ArrowLeft":
+          ev.preventDefault();
+          seekBy(-1, ev.shiftKey ? 30 : 5);
+          break;
+        case "ArrowRight":
+          ev.preventDefault();
+          seekBy(1, ev.shiftKey ? 30 : 5);
+          break;
+        case "Home":
+          if (isLive) {
+            ev.preventDefault();
+            const s = v.seekable;
+            if (s.length > 0) {
+              v.currentTime = s.end(s.length - 1);
+              setCurrentTime(v.currentTime);
+            }
+          }
+          break;
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isLive, seekBy]);
 
   // ─── actions ────────────────────────────────────────────────────────────
   const retry = () => {
@@ -236,20 +382,55 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
       ? (levels[activeLevel]?.height ? `Auto·${levels[activeLevel].height}p` : "Auto")
       : qualityLabel(levels[curLevel]);
 
-  // tap on the video area toggles controls on touch, shows on mouse move
-  const handlePlayerInteraction = (e: React.MouseEvent | React.TouchEvent) => {
+  // ─── mobile touch: swipe-to-seek + double-tap-to-seek (YouTube-style) ─
+  // swipe: horizontal delta > 40px triggers ±1s per 12px (≈ iOS video seek)
+  // double-tap: on the left half = back 10s, on the right half = forward 10s
+  const onTouchStart = (e: React.TouchEvent) => {
     if (showQuality) { setShowQuality(false); return; }
-    if ("touches" in e) {
-      // touch: toggle visibility
+    const t = e.touches[0];
+    touchStartX.current = t.clientX;
+    touchStartY.current = t.clientY;
+    touchStartT.current = Date.now();
+  };
+  const onTouchMove = () => { /* swipe distance is read on touchend */ };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (showQuality) return;
+    const t = e.changedTouches[0];
+    if (touchStartX.current == null || touchStartY.current == null) return;
+    const dx = t.clientX - touchStartX.current;
+    const dy = t.clientY - touchStartY.current;
+    const dt = Date.now() - touchStartT.current;
+    touchStartX.current = null;
+    touchStartY.current = null;
+    // ignore vertical scrolls and quick taps
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) || dt > 800) {
+      // treat as a tap: toggle controls visibility
       if (controlsVisible) {
         setControlsVisible(false);
         if (hideTimer.current) clearTimeout(hideTimer.current);
       } else {
         showControls();
       }
-    } else {
-      showControls();
+      return;
     }
+    // horizontal swipe → seek. ~12px per second, capped at 60s in either direction.
+    const secs = Math.max(-60, Math.min(60, Math.round(dx / 12)));
+    if (secs !== 0) seekBy(secs > 0 ? 1 : -1, Math.abs(secs));
+  };
+
+  const onDoubleClick = (e: React.MouseEvent) => {
+    // double-click on the left/right half of the player seeks ±10s
+    const rect = wrapRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const mid = rect.left + rect.width / 2;
+    const dir: -1 | 1 = e.clientX < mid ? -1 : 1;
+    seekBy(dir, 10);
+  };
+
+  // tap on the video area (mouse only — touch is handled above) shows controls
+  const handleMouseTap = () => {
+    if (showQuality) { setShowQuality(false); return; }
+    showControls();
   };
 
   // ─── render ─────────────────────────────────────────────────────────────
@@ -258,8 +439,11 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
       ref={wrapRef}
       className={`relative h-full w-full overflow-hidden bg-black ${isFullscreen ? "" : "rounded-xl"} ${className ?? ""}`}
       onMouseMove={showControls}
-      onClick={handlePlayerInteraction}
-      onTouchStart={handlePlayerInteraction}
+      onClick={handleMouseTap}
+      onDoubleClick={onDoubleClick}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
     >
       {/* Video — fills 100% */}
       <video
@@ -284,18 +468,48 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
             className="relative h-2 flex-1 cursor-pointer rounded-full bg-white/20 touch-none"
             onClick={(e) => {
               const v = videoRef.current;
-              if (!v || !v.duration) return;
+              if (!v) return;
               const r = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-              v.currentTime = ((e.clientX - r.left) / r.width) * v.duration;
+              const ratio = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+              const s = v.seekable;
+              if (s.length > 0) {
+                // jump within seekable window (works for live back-buffer and VOD)
+                const start = s.start(0);
+                const end = s.end(s.length - 1);
+                v.currentTime = start + ratio * (end - start);
+              } else if (v.duration && isFinite(v.duration)) {
+                v.currentTime = ratio * v.duration;
+              }
+              setCurrentTime(v.currentTime);
             }}
           >
-            <div className="absolute inset-y-0 left-0 rounded-full bg-white/30" style={{ width: `${buffered}%` }} />
-            <div className="absolute inset-y-0 left-0 rounded-full bg-primary transition-[width]" style={{ width: `${played}%` }} />
+            <div className="absolute inset-y-0 left-0 rounded-full bg-white/30" style={{ width: `${Math.min(100, Math.max(0, buffered))}%` }} />
+            <div className="absolute inset-y-0 left-0 rounded-full bg-primary transition-[width]" style={{ width: `${Math.min(100, Math.max(0, played))}%` }} />
           </div>
-          {/* LIVE badge */}
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-live/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-            <span className="h-1.5 w-1.5 animate-pulse-live rounded-full bg-white" />LIVE
-          </span>
+          {/* LIVE badge — clickable to jump to the live edge when paused in the back-buffer */}
+          <button
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              const v = videoRef.current;
+              if (!v) return;
+              const s = v.seekable;
+              if (s.length > 0) {
+                v.currentTime = s.end(s.length - 1);
+                setCurrentTime(v.currentTime);
+              }
+              showControls();
+            }}
+            className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white transition ${
+              isLive && seekableEnd > 0 && Math.abs(currentTime - seekableEnd) < 1
+                ? "bg-live/90 cursor-default"
+                : "bg-live/60 ring-1 ring-live/60 hover:bg-live active:scale-95"
+            }`}
+            title="Jump to live edge"
+            aria-label="Jump to live edge"
+          >
+            <span className="h-1.5 w-1.5 animate-pulse-live rounded-full bg-white" />
+            LIVE
+          </button>
           {viaProxy && (
             <span className="hidden shrink-0 rounded-full bg-yellow-500/20 px-1.5 py-0.5 text-[9px] font-semibold text-yellow-400 sm:inline">
               proxy
@@ -306,6 +520,17 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
         {/* Buttons row */}
         <div className="flex items-center gap-1">
 
+          {/* Back 10s — VLC-style seek (works for VOD and live back-buffer) */}
+          <button
+            onPointerDown={(e) => { e.stopPropagation(); seekBy(-1, 10); }}
+            className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-white active:bg-white/20 sm:h-8 sm:w-8 sm:rounded-md"
+            aria-label="Back 10 seconds"
+            title="Back 10s (←)"
+          >
+            <Rewind className="h-5 w-5 sm:h-4 sm:w-4" />
+            <span className="pointer-events-none absolute -bottom-0.5 text-[8px] font-bold leading-none sm:-bottom-1">10</span>
+          </button>
+
           {/* Play / Pause */}
           <button
             onPointerDown={(e) => { e.stopPropagation(); togglePlay(); }}
@@ -313,6 +538,17 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
             aria-label={playing ? "Pause" : "Play"}
           >
             {playing ? <Pause className="h-5 w-5 sm:h-4 sm:w-4" /> : <Play className="h-5 w-5 sm:h-4 sm:w-4" />}
+          </button>
+
+          {/* Forward 10s — VLC-style seek (works for VOD and live) */}
+          <button
+            onPointerDown={(e) => { e.stopPropagation(); seekBy(1, 10); }}
+            className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-white active:bg-white/20 sm:h-8 sm:w-8 sm:rounded-md"
+            aria-label="Forward 10 seconds"
+            title="Forward 10s (→)"
+          >
+            <FastForward className="h-5 w-5 sm:h-4 sm:w-4" />
+            <span className="pointer-events-none absolute -bottom-0.5 text-[8px] font-bold leading-none sm:-bottom-1">10</span>
           </button>
 
           {/* Mute */}
@@ -420,6 +656,26 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
           </button>
         </div>
       </div>
+
+      {/* ── Seek feedback overlay (YouTube-style center flash) ── */}
+      {seekFlash && (
+        <div
+          key={seekFlash.key}
+          className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center"
+        >
+          <div className="flex flex-col items-center gap-1 rounded-2xl bg-black/60 px-5 py-3 text-white backdrop-blur-sm animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-2">
+              {seekFlash.dir === -1
+                ? <Rewind className="h-7 w-7" />
+                : <FastForward className="h-7 w-7" />}
+              <span className="font-display text-2xl font-bold tabular-nums">{seekFlash.secs}s</span>
+            </div>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-white/70">
+              {seekFlash.dir === -1 ? "Back" : "Forward"}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* ── Loading overlay ── */}
       {loading && !error && (
