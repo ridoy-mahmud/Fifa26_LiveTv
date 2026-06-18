@@ -68,6 +68,15 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
   // controls visibility — always visible on mobile, hover-or-tap on desktop
   const [controlsVisible, setControlsVisible] = useState(true);
 
+  // ── show controls and start auto-hide timer ──────────────────────────────
+  // Declared before seekBy so seekBy's useCallback body can safely reference
+  // it without hitting the temporal dead zone during the first render.
+  const showControls = useCallback(() => {
+    setControlsVisible(true);
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => setControlsVisible(false), 3500);
+  }, []);
+
   // ── seek helper ─────────────────────────────────────────────────────────
   // dir = -1 for back, +1 for forward, secs = seconds. Shows a flash overlay.
   const seekBy = useCallback((dir: -1 | 1, secs: number) => {
@@ -88,13 +97,6 @@ export function HlsPlayer({ src, fallbackUrl, poster, className }: Props) {
     setSeekFlash({ dir, secs, key });
     seekFlashTimer.current = setTimeout(() => setSeekFlash((f) => (f && f.key === key ? null : f)), 700);
   }, [showControls]);
-
-  // ── show controls and start auto-hide timer ──────────────────────────────
-  const showControls = useCallback(() => {
-    setControlsVisible(true);
-    if (hideTimer.current) clearTimeout(hideTimer.current);
-    hideTimer.current = setTimeout(() => setControlsVisible(false), 3500);
-  }, []);
 
   // Keep controls visible permanently when paused or loading
   useEffect(() => {
