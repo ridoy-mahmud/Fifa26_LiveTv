@@ -1,13 +1,17 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import {
   Plus, Trash2, Star, ArrowUp, ArrowDown, Upload,
   RotateCcw, Pencil, Search, Tv, X, Check, ChevronDown,
-  GripVertical,
+  GripVertical, Database, Loader2, ShieldAlert,
 } from "lucide-react";
-import { useChannels, parseCsv } from "@/lib/channels-store";
+import { useChannels, useChannelMutations, parseCsv } from "@/lib/channels-store";
 import { FALLBACK_LOGO, ALL_GROUPS, type Channel, type ChannelGroup } from "@/lib/channels-data";
-import { isAdmin } from "@/lib/admin-session";
+import { getMongoStatus } from "@/lib/api/channels.functions";
+import { seedIfEmpty } from "@/lib/api/seed.functions";
+import { useAdminSession } from "@/components/admin/AdminButton";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -23,17 +27,46 @@ type SortKey = "order" | "name" | "group";
 
 function AdminPage() {
   const router = useRouter();
-  const { channels, update, upsert, remove, toggleFeatured, reset, importMany } = useChannels();
+  const { channels, isLoading, refetch } = useChannels();
+  const mutations = useChannelMutations();
+  const { admin, isLoading: authLoading } = useAdminSession();
+  const statusFn = useServerFn(getMongoStatus);
+  const seedFn = useServerFn(seedIfEmpty);
+  const qc = useQueryClient();
+
   const [authed, setAuthed] = useState(false);
   const [q, setQ] = useState("");
   const [groupFilter, setGroupFilter] = useState<ChannelGroup | "All" | "★ Top">("All");
   const [sortKey, setSortKey] = useState<SortKey>("order");
   const [sortAsc, setSortAsc] = useState(true);
 
+  const mongoQ = useQuery({
+    queryKey: ["mongo", "status"],
+    queryFn: () => statusFn(),
+    staleTime: 30_000,
+    retry: false,
+  });
+
   useEffect(() => {
-    if (!isAdmin()) { router.navigate({ to: "/" }); return; }
+    if (authLoading) return;
+    if (!admin) {
+      router.navigate({ to: "/" });
+      return;
+    }
     setAuthed(true);
-  }, [router]);
+  }, [admin, authLoading, router]);
+
+  const seedMut = useMutation({
+    mutationFn: () => seedFn(),
+    onSuccess: async (res) => {
+      await qc.invalidateQueries({ queryKey: ["mongo", "status"] });
+      await qc.invalidateQueries({ queryKey: ["channels"] });
+      alert(
+        `Seeded. Channels: ${res.channels}, admin: ${res.admin ? "created" : "existed"}.`,
+      );
+    },
+    onError: (e: unknown) => alert(e instanceof Error ? e.message : "Seed failed"),
+  });
 
   const filtered = useMemo(() => {
     let list = [...channels];
@@ -53,31 +86,33 @@ function AdminPage() {
 
   const totalFeatured = channels.filter((c) => c.featured).length;
 
-  const moveInMaster = (id: string, dir: -1 | 1) => {
+  const moveInMaster = async (id: string, dir: -1 | 1) => {
     const idx = channels.findIndex((x) => x.id === id);
     const j = idx + dir;
     if (j < 0 || j >= channels.length) return;
     const next = [...channels];
     [next[idx], next[j]] = [next[j], next[idx]];
-    update(next);
+    await mutations.reorder(next.map((c) => c.id));
   };
 
   const onFile = async (file: File) => {
     const text = await file.text();
     if (file.name.endsWith(".csv")) {
-      importMany(parseCsv(text));
+      mutations.importMany(parseCsv(text));
     } else {
       try {
         const json = JSON.parse(text);
         const arr = Array.isArray(json) ? json : json.channels ?? json.streams;
         if (!Array.isArray(arr)) throw new Error("Bad JSON");
-        importMany(arr.map((r: Record<string, unknown>) => ({
-          name: (r.name as string) ?? (r.channel_name as string) ?? "",
-          group: (r.group as ChannelGroup) ?? "Sports",
-          logo: (r.logo as string) ?? "",
-          url: ((r.url as string) || (r.m3u8 as string) || (r.m3u8_url as string)) ?? "",
-          featured: !!r.featured,
-        })));
+        mutations.importMany(
+          arr.map((r: Record<string, unknown>) => ({
+            name: (r.name as string) ?? (r.channel_name as string) ?? "",
+            group: (r.group as ChannelGroup) ?? "Sports",
+            logo: (r.logo as string) ?? "",
+            url: ((r.url as string) || (r.m3u8 as string) || (r.m3u8_url as string)) ?? "",
+            featured: !!r.featured,
+          })),
+        );
       } catch {
         alert("Invalid JSON file");
       }
@@ -92,8 +127,7 @@ function AdminPage() {
   const SortBtn = ({ k, label }: { k: SortKey; label: string }) => (
     <button
       onClick={() => toggleSort(k)}
-      className={`inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider transition ${sortKey === k ? "text-primary" : "text-muted-foreground hover:text-foreground"
-        }`}
+      className={`inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider transition ${sortKey === k ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
     >
       {label}
       <ChevronDown className={`h-3 w-3 transition-transform ${sortKey === k && !sortAsc ? "rotate-180" : ""}`} />
@@ -120,7 +154,7 @@ function AdminPage() {
               onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.currentTarget.value = ""; }} />
           </label>
           <button
-            onClick={() => { if (confirm("Reset all channels to defaults?")) reset(); }}
+            onClick={() => { if (confirm("Reset all channels to defaults?")) mutations.reset(); }}
             className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold transition hover:bg-secondary"
           >
             <RotateCcw className="h-4 w-4" /> Reset
@@ -128,12 +162,30 @@ function AdminPage() {
         </div>
       </header>
 
+      {/* DB status bar */}
+      <DbStatusBar
+        connected={!!mongoQ.data?.ok}
+        channelCount={mongoQ.data?.channelCount ?? 0}
+        sessionCount={mongoQ.data?.activeSessions ?? 0}
+        loading={mongoQ.isLoading}
+        onSeed={() => seedMut.mutate()}
+        seeding={seedMut.isPending}
+        onRefresh={async () => { await Promise.all([mongoQ.refetch(), refetch()]); }}
+      />
+
       {/* Add channel form */}
-      <AddChannelForm onAdd={(c) => upsert(c)} />
+      <div className="mt-4">
+        <AddChannelForm
+          onAdd={async (c) => {
+            try { await mutations.upsert(c); }
+            catch (e) { alert(e instanceof Error ? e.message : "Add failed"); }
+          }}
+          disabled={mutations.upsert.isPending}
+        />
+      </div>
 
       {/* Filters bar */}
       <div className="mt-6 space-y-3">
-        {/* Search + sort */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -153,7 +205,6 @@ function AdminPage() {
           </div>
         </div>
 
-        {/* Group filter tabs */}
         <div className="flex flex-wrap gap-1.5">
           {(["All", "★ Top", ...ALL_GROUPS] as const).map((g) => {
             const count = g === "All" ? channels.length
@@ -163,8 +214,7 @@ function AdminPage() {
               <button key={g} onClick={() => setGroupFilter(g as typeof groupFilter)}
                 className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold transition ${groupFilter === g
                     ? "bg-primary text-primary-foreground"
-                    : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                  }`}
+                    : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"}`}
               >
                 {g} <span className="opacity-70">({count})</span>
               </button>
@@ -189,23 +239,20 @@ function AdminPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                    No channels match your filter.
-                  </td>
-                </tr>
+              {isLoading && (
+                <tr><td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">Loading…</td></tr>
+              )}
+              {!isLoading && filtered.length === 0 && (
+                <tr><td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">No channels match your filter.</td></tr>
               )}
               {filtered.map((c) => {
                 const masterIdx = channels.findIndex((x) => x.id === c.id);
                 return (
                   <tr key={c.id} className="group/row border-t border-border hover:bg-secondary/20 transition-colors">
-                    {/* drag hint */}
                     <td className="px-2 py-2 text-muted-foreground/30 group-hover/row:text-muted-foreground">
                       <GripVertical className="h-4 w-4" />
                     </td>
                     <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums">{masterIdx + 1}</td>
-                    {/* Channel */}
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2.5">
                         <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-background ring-1 ring-border">
@@ -219,29 +266,20 @@ function AdminPage() {
                         </div>
                       </div>
                     </td>
-                    {/* Group badge */}
-                    <td className="px-3 py-2 hidden sm:table-cell">
-                      <GroupBadge group={c.group} />
-                    </td>
-                    {/* URL */}
+                    <td className="px-3 py-2 hidden sm:table-cell"><GroupBadge group={c.group} /></td>
                     <td className="px-3 py-2 hidden lg:table-cell max-w-[240px]">
-                      <span className="block truncate text-[11px] text-muted-foreground font-mono" title={c.url}>
-                        {c.url}
-                      </span>
+                      <span className="block truncate text-[11px] text-muted-foreground font-mono" title={c.url}>{c.url}</span>
                     </td>
-                    {/* Featured toggle */}
                     <td className="px-3 py-2 text-center">
-                      <button onClick={() => toggleFeatured(c.id)}
+                      <button onClick={() => mutations.toggleFeatured(c.id)}
                         title={c.featured ? "Remove from Top 10" : "Add to Top 10"}
+                        disabled={mutations.toggleFeatured.isPending}
                         className={`inline-flex h-7 w-7 items-center justify-center rounded-full transition ${c.featured
                             ? "bg-gold/20 text-gold hover:bg-gold/30"
-                            : "bg-secondary text-muted-foreground hover:bg-secondary/80 hover:text-gold"
-                          }`}
-                      >
+                            : "bg-secondary text-muted-foreground hover:bg-secondary/80 hover:text-gold"}`}>
                         <Star className={`h-3.5 w-3.5 ${c.featured ? "fill-gold" : ""}`} />
                       </button>
                     </td>
-                    {/* Actions */}
                     <td className="px-3 py-2">
                       <div className="flex items-center justify-end gap-0.5">
                         <button onClick={() => moveInMaster(c.id, -1)} title="Move up"
@@ -252,12 +290,15 @@ function AdminPage() {
                           className="rounded p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground">
                           <ArrowDown className="h-3.5 w-3.5" />
                         </button>
-                        <EditChannelModal channel={c} onSave={(next) => upsert(next)} />
+                        <EditChannelModal channel={c} onSave={async (next) => {
+                          try { await mutations.upsert(next); }
+                          catch (e) { alert(e instanceof Error ? e.message : "Save failed"); }
+                        }} />
                         <button
-                          onClick={() => { if (confirm(`Delete "${c.name}"?`)) remove(c.id); }}
+                          onClick={() => { if (confirm(`Delete "${c.name}"?`)) mutations.remove(c.id); }}
+                          disabled={mutations.remove.isPending}
                           title="Delete"
-                          className="rounded p-1.5 text-muted-foreground hover:bg-live/10 hover:text-live"
-                        >
+                          className="rounded p-1.5 text-muted-foreground hover:bg-live/10 hover:text-live">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
@@ -272,13 +313,57 @@ function AdminPage() {
 
       <p className="mt-4 text-xs text-muted-foreground">
         <Tv className="mr-1 inline h-3 w-3" />
-        Edits persist in your browser via localStorage.
+        Edits persist in MongoDB Atlas. Changes are visible to all visitors.
       </p>
     </div>
   );
 }
 
-// ── Group colour badge ──────────────────────────────────────────────────────
+function DbStatusBar({
+  connected, channelCount, sessionCount, loading, onSeed, seeding, onRefresh,
+}: {
+  connected: boolean;
+  channelCount: number;
+  sessionCount: number;
+  loading: boolean;
+  onSeed: () => void;
+  seeding: boolean;
+  onRefresh: () => void;
+}) {
+  const empty = connected && channelCount === 0;
+  return (
+    <div className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2 text-xs ${connected
+        ? empty
+          ? "border-gold/40 bg-gold/10"
+          : "border-emerald-500/40 bg-emerald-500/10"
+        : "border-live/40 bg-live/10"}`}>
+      <div className="flex items-center gap-2">
+        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> :
+          connected ? <Database className="h-3.5 w-3.5 text-emerald-400" /> : <ShieldAlert className="h-3.5 w-3.5 text-live" />}
+        <span>
+          {loading ? "Checking database…" :
+            !connected ? "MongoDB not reachable" :
+              empty ? "Database is empty" :
+                `MongoDB connected · ${channelCount} channels · ${sessionCount} active session${sessionCount === 1 ? "" : "s"}`}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        {empty && (
+          <button onClick={onSeed} disabled={seeding}
+            className="inline-flex items-center gap-1.5 rounded-md bg-gold px-2.5 py-1 font-semibold text-background disabled:opacity-60">
+            {seeding && <Loader2 className="h-3 w-3 animate-spin" />}
+            Seed from defaults
+          </button>
+        )}
+        <button onClick={onRefresh} title="Refresh"
+          className="rounded-md border border-border bg-card px-2 py-1 font-semibold hover:bg-secondary">
+          Refresh
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const GROUP_COLORS: Record<string, string> = {
   Football: "bg-green-500/15 text-green-400",
   Sports: "bg-blue-500/15 text-blue-400",
@@ -301,11 +386,9 @@ function GroupBadge({ group }: { group: string }) {
   );
 }
 
-// ── Add channel form ────────────────────────────────────────────────────────
-function AddChannelForm({ onAdd }: { onAdd: (c: Channel) => void }) {
+function AddChannelForm({ onAdd, disabled }: { onAdd: (c: Channel) => void; disabled?: boolean }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", url: "", logo: "", group: "Sports" as ChannelGroup, featured: false });
-
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.url) return;
@@ -353,8 +436,8 @@ function AddChannelForm({ onAdd }: { onAdd: (c: Channel) => void }) {
             <div className="flex gap-2">
               <button type="button" onClick={() => setOpen(false)}
                 className="rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary">Cancel</button>
-              <button type="submit"
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary-glow">
+              <button type="submit" disabled={disabled}
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary-glow disabled:opacity-60">
                 <Check className="h-4 w-4" /> Add channel
               </button>
             </div>
@@ -365,7 +448,6 @@ function AddChannelForm({ onAdd }: { onAdd: (c: Channel) => void }) {
   );
 }
 
-// ── Edit modal ──────────────────────────────────────────────────────────────
 function EditChannelModal({ channel, onSave }: { channel: Channel; onSave: (c: Channel) => void }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(channel);
@@ -383,7 +465,6 @@ function EditChannelModal({ channel, onSave }: { channel: Channel; onSave: (c: C
           onClick={() => setOpen(false)}>
           <div className="w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl"
             onClick={(e) => e.stopPropagation()}>
-            {/* Modal header */}
             <div className="flex items-center justify-between border-b border-border px-6 py-4">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 overflow-hidden rounded-lg bg-background ring-1 ring-border">
@@ -433,3 +514,5 @@ function EditChannelModal({ channel, onSave }: { channel: Channel; onSave: (c: C
     </>
   );
 }
+
+

@@ -1,49 +1,74 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ShieldCheck, X, Loader2, LogOut, LayoutDashboard } from "lucide-react";
-import { adminLogin } from "@/lib/admin.functions";
-import { clearAdminSession, isAdmin, setAdminSession } from "@/lib/admin-session";
+import { adminLogin, adminLogout, adminMe } from "@/lib/api/admin-auth.functions";
+
+export const adminQueryKey = ["admin", "me"] as const;
+
+export function useAdminSession() {
+  const fetch = useServerFn(adminMe);
+  const query = useQuery({
+    queryKey: adminQueryKey,
+    queryFn: () => fetch(),
+    staleTime: 60_000,
+    retry: false,
+  });
+  return {
+    admin: query.data?.admin ?? null,
+    isLoading: query.isLoading,
+    refetch: query.refetch,
+  };
+}
 
 export function AdminButton() {
   const router = useRouter();
-  const login = useServerFn(adminLogin);
+  const qc = useQueryClient();
+  const { admin } = useAdminSession();
+  const loginFn = useServerFn(adminLogin);
+  const logoutFn = useServerFn(adminLogout);
+
   const [open, setOpen] = useState(false);
-  const [authed, setAuthed] = useState(false);
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [err, setErr] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    setAuthed(isAdmin());
-    const sync = () => setAuthed(isAdmin());
-    window.addEventListener("admin:changed", sync);
-    return () => window.removeEventListener("admin:changed", sync);
-  }, []);
+    if (admin) {
+      window.dispatchEvent(new CustomEvent("admin:changed"));
+    }
+  }, [admin]);
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setErr(null);
-    try {
-      const res = await login({ data: { email, password: pw } });
-      setAdminSession(res.token);
+  const loginMut = useMutation({
+    mutationFn: (input: { email: string; password: string }) =>
+      loginFn({ data: input }),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: adminQueryKey });
       setOpen(false);
       setEmail("");
       setPw("");
       router.navigate({ to: "/admin" });
-    } catch {
-      setErr("Invalid credentials.");
-    } finally {
-      setBusy(false);
-    }
+    },
+    onError: (e: unknown) =>
+      setErr(e instanceof Error ? e.message : "Sign-in failed"),
+  });
+
+  const logoutMut = useMutation({
+    mutationFn: () => logoutFn(),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: adminQueryKey });
+      router.navigate({ to: "/" });
+    },
+  });
+
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setErr(null);
+    loginMut.mutate({ email, password: pw });
   };
 
-  const onLogout = () => {
-    clearAdminSession();
-    router.navigate({ to: "/" });
-  };
+  const authed = !!admin;
 
   return (
     <>
@@ -57,7 +82,7 @@ export function AdminButton() {
             <LayoutDashboard className="h-4 w-4" />
           </button>
           <button
-            onClick={onLogout}
+            onClick={() => logoutMut.mutate()}
             title="Sign out"
             className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary/60 text-muted-foreground transition hover:text-foreground"
           >
@@ -129,10 +154,10 @@ export function AdminButton() {
               )}
               <button
                 type="submit"
-                disabled={busy}
+                disabled={loginMut.isPending}
                 className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary-glow disabled:opacity-60"
               >
-                {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+                {loginMut.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                 Sign in
               </button>
             </form>

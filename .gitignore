@@ -62,4 +62,14 @@ Thumbs.db
 *.sln
 *.sw?
 
+# ── Puku assistant cache & Windows CLI artefacts ────────────────────────────
+.puku/
+nul
+
 .vercel
+.env
+.env.*
+!.env.example
+*.local
+secrets/
+credentials/

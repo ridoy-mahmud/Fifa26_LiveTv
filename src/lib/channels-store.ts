@@ -1,128 +1,114 @@
-// Client-side channel store with localStorage persistence.
-// Admins edit; defaults from channels-data.ts are the seed.
-import { useEffect, useState, useCallback } from "react";
-import { DEFAULT_CHANNELS, type Channel } from "./channels-data";
+// Client-side channel hooks backed by the MongoDB server functions.
+// Replaces the previous localStorage-only store; admin edits now go
+// straight to the DB and the public `/live` page reads the same
+// canonical source.
+//
+// The store still exports the same `useChannels()` API so consumers
+// (`/live`, `ChannelList`) keep working without changes. Admin-only
+// mutation helpers live alongside and are called from `/admin`.
 
-// Bump this key whenever DEFAULT_CHANNELS changes significantly so stale
-// localStorage caches are ignored and users get the new full channel list.
-const KEY = "wc2026.channels.v4";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useCallback, useMemo } from "react";
+import {
+  deleteChannel,
+  importChannels,
+  listChannels,
+  patchChannel,
+  replaceAllChannels,
+  reorderChannels,
+  toggleFeatured,
+  upsertChannel,
+} from "@/lib/api/channels.functions";
+import {
+  DEFAULT_CHANNELS,
+  type Channel,
+  type ChannelGroup,
+} from "./channels-data";
 
-function load(): Channel[] {
-  if (typeof window === "undefined") return DEFAULT_CHANNELS;
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return DEFAULT_CHANNELS;
-    const parsed = JSON.parse(raw) as Channel[];
-    if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_CHANNELS;
+export const channelsQueryKey = ["channels"] as const;
 
-    // Merge: keep saved edits but add any new default channels that aren't
-    // already present (matched by URL). This means new channels from
-    // channels-data.ts always show up even after a local save.
-    const savedUrls = new Set(parsed.map((c) => c.url));
-    const newDefaults = DEFAULT_CHANNELS.filter((d) => !savedUrls.has(d.url));
-    if (newDefaults.length > 0) {
-      const merged = [...parsed, ...newDefaults].map((c, i) => ({ ...c, order: i }));
-      // persist the merged list so next load is instant
-      try { localStorage.setItem(KEY, JSON.stringify(merged)); } catch { /* ignore */ }
-      return merged;
-    }
-
-    return parsed;
-  } catch {
-    return DEFAULT_CHANNELS;
-  }
-}
-
-function save(channels: Channel[]) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(channels));
-    window.dispatchEvent(new CustomEvent("channels:updated"));
-  } catch {
-    // storage quota — ignore
-  }
-}
-
+// ── Public read hook ───────────────────────────────────────────────────────
 export function useChannels() {
-  const [channels, setChannels] = useState<Channel[]>(() => load());
-
-  useEffect(() => {
-    const handler = () => setChannels(load());
-    window.addEventListener("channels:updated", handler);
-    window.addEventListener("storage", handler);
-    return () => {
-      window.removeEventListener("channels:updated", handler);
-      window.removeEventListener("storage", handler);
-    };
-  }, []);
-
-  const update = useCallback((next: Channel[]) => {
-    const ordered = next.map((c, i) => ({ ...c, order: i }));
-    save(ordered);
-    setChannels(ordered);
-  }, []);
-
-  const upsert = useCallback((c: Channel) => {
-    setChannels((cur) => {
-      const idx = cur.findIndex((x) => x.id === c.id);
-      const next = idx >= 0 ? cur.map((x) => (x.id === c.id ? c : x)) : [...cur, c];
-      save(next);
-      return next;
-    });
-  }, []);
-
-  const remove = useCallback((id: string) => {
-    setChannels((cur) => {
-      const next = cur.filter((c) => c.id !== id);
-      save(next);
-      return next;
-    });
-  }, []);
-
-  const toggleFeatured = useCallback((id: string) => {
-    setChannels((cur) => {
-      const next = cur.map((c) => (c.id === id ? { ...c, featured: !c.featured } : c));
-      save(next);
-      return next;
-    });
-  }, []);
-
-  const reset = useCallback(() => {
-    save(DEFAULT_CHANNELS);
-    setChannels(DEFAULT_CHANNELS);
-  }, []);
-
-  const importMany = useCallback((incoming: Partial<Channel>[]) => {
-    setChannels((cur) => {
-      const byUrl = new Map(cur.map((c) => [c.url, c]));
-      for (const inc of incoming) {
-        if (!inc.url || !inc.name) continue;
-        const id =
-          inc.id ||
-          (inc.name as string).toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40) +
-          "-" +
-          Math.random().toString(36).slice(2, 6);
-        const group = (inc.group as Channel["group"]) || "Sports";
-        const logo = inc.logo || "";
-        byUrl.set(inc.url, {
-          id,
-          name: inc.name as string,
-          group,
-          logo,
-          url: inc.url,
-          featured: !!inc.featured,
-          order: byUrl.size,
-        });
-      }
-      const next = Array.from(byUrl.values()).map((c, i) => ({ ...c, order: i }));
-      save(next);
-      return next;
-    });
-  }, []);
-
-  return { channels, update, upsert, remove, toggleFeatured, reset, importMany };
+  const fetch = useServerFn(listChannels);
+  const query = useQuery({
+    queryKey: channelsQueryKey,
+    queryFn: () => fetch(),
+    staleTime: 30_000,
+  });
+  const channels = useMemo<Channel[]>(
+    () => query.data ?? DEFAULT_CHANNELS,
+    [query.data],
+  );
+  return { channels, isLoading: query.isLoading, isError: query.isError, refetch: query.refetch };
 }
 
+// ── Admin mutation hooks ───────────────────────────────────────────────────
+export function useChannelMutations() {
+  const qc = useQueryClient();
+  const upsertFn = useServerFn(upsertChannel);
+  const patchFn = useServerFn(patchChannel);
+  const toggleFn = useServerFn(toggleFeatured);
+  const delFn = useServerFn(deleteChannel);
+  const reorderFn = useServerFn(reorderChannels);
+  const replaceAllFn = useServerFn(replaceAllChannels);
+  const importFn = useServerFn(importChannels);
+
+  const invalidate = useCallback(() => qc.invalidateQueries({ queryKey: channelsQueryKey }), [qc]);
+
+  const upsert = useMutation({
+    mutationFn: (c: Channel) => upsertFn({ data: c }),
+    onSuccess: invalidate,
+  });
+
+  const patch = useMutation({
+    mutationFn: (c: Partial<Channel> & { id: string }) => patchFn({ data: c }),
+    onSuccess: invalidate,
+  });
+
+  const toggleFeatured = useMutation({
+    mutationFn: (id: string) => toggleFn({ data: { id } }),
+    onSuccess: invalidate,
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => delFn({ data: { id } }),
+    onSuccess: invalidate,
+  });
+
+  const reorder = useMutation({
+    mutationFn: (orderedIds: string[]) => reorderFn({ data: { orderedIds } }),
+    onSuccess: invalidate,
+  });
+
+  const reset = useMutation({
+    mutationFn: () => replaceAllFn({ data: { rows: DEFAULT_CHANNELS } }),
+    onSuccess: invalidate,
+  });
+
+  const importMany = useMutation({
+    mutationFn: (rows: Partial<Channel>[]) =>
+      importFn({
+        data: {
+          rows: rows
+            .filter((r) => r.url && r.name)
+            .map((r) => ({
+              name: r.name as string,
+              group: ((r.group as ChannelGroup) ?? "Sports") as ChannelGroup,
+              logo: r.logo ?? "",
+              url: r.url as string,
+              fallbackUrl: r.fallbackUrl ?? null,
+              featured: !!r.featured,
+            })),
+        },
+      }),
+    onSuccess: invalidate,
+  });
+
+  return { upsert, patch, toggleFeatured, remove, reorder, reset, importMany, invalidate };
+}
+
+// ── CSV parser (unchanged) ────────────────────────────────────────────────
 export function parseCsv(text: string): Partial<Channel>[] {
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
   if (lines.length === 0) return [];
