@@ -13,10 +13,23 @@ This guide covers deploying the WC 2026 Live application to Vercel.
 Configure these environment variables in your Vercel project settings:
 
 ### Required Variables
+
 - `ADMIN_EMAIL` - Admin email for authentication
 - `ADMIN_PASSWORD` - Secure password for admin access
+- `MONGODB_URI` - MongoDB connection string for the admin dashboard and channel data
+
+### Accepted MongoDB Aliases
+
+The app now also checks these names if `MONGODB_URI` is not present:
+
+- `DATABASE_URL`
+- `MONGODB_URL`
+- `MONGO_URL`
+
+If you use one of the aliases, make sure it is added to the **Production** environment in Vercel, not only Preview or Development.
 
 ### Optional Variables
+
 - `NODE_ENV` - Set to `production` (automatically set by Vercel)
 
 ## Deployment Steps
@@ -31,19 +44,25 @@ Configure these environment variables in your Vercel project settings:
 ### 2. Configure Project Settings
 
 #### Build & Development Settings
+
 - **Framework Preset**: Other
 - **Build Command**: `npm run build`
 - **Output Directory**: `.vercel/output`
 - **Install Command**: `npm install`
 
 #### Environment Variables
+
 Add the required environment variables in:
+
 - Project Settings → Environment Variables
 - Or add them during the initial setup
+
+For MongoDB, verify the value is pasted without extra quotes or whitespace and that Atlas network access allows Vercel's outbound traffic.
 
 ### 3. Deploy
 
 Click "Deploy" and Vercel will:
+
 1. Install dependencies
 2. Build the application
 3. Deploy to their global edge network
@@ -51,7 +70,9 @@ Click "Deploy" and Vercel will:
 ## Configuration Files
 
 ### vercel.json
+
 The project uses a simple `vercel.json` file with essential settings:
+
 - **Build Command**: `npm run build`
 - **Output Directory**: `dist` (standard TanStack Start output)
 - **Framework**: null (let TanStack Start handle everything)
@@ -59,19 +80,25 @@ The project uses a simple `vercel.json` file with essential settings:
 TanStack Start generates the correct build structure automatically.
 
 ### .vercelignore
+
 Excludes unnecessary files from deployment while keeping essential build artifacts:
+
 - **Excludes**: Development files, test files, large dependencies, intermediate build outputs
 - **Includes**: `dist/` (essential for deployment)
 - **Important**: Unlike `.gitignore`, `.vercelignore` should NOT exclude the build output directory
 
 ### .nvmrc
+
 Specifies Node.js version 20 for consistent builds across environments.
 
 ### package.json
+
 Includes `engines` field specifying Node.js >= 20.0.0 requirement.
 
 ### vite.config.ts
+
 The Vite configuration uses standard TanStack Start defaults with minimal customization:
+
 ```typescript
 export default defineConfig({
   tanstackStart: {
@@ -99,26 +126,31 @@ This ensures maximum compatibility and stability for Vercel deployment.
 #### Common Vercel Build Issues
 
 **Issue: Build fails with "Module not found" errors**
+
 - Ensure all dependencies are in package.json
 - Check that node_modules are properly installed
 - Verify the build command works locally: `npm run build`
 
 **Issue: Node.js version errors**
+
 - The project requires Node.js >= 20.0.0
 - Check `.nvmrc` file specifies Node 20
 - In Vercel project settings, set Node.js Version to 20.x
 
 **Issue: Nitro/Vercel preset errors**
+
 - Ensure `nitro: { preset: "vercel" }` is in vite.config.ts
 - Remove any conflicting rewrites in vercel.json
 - Let Nitro handle routing automatically
 
 **Issue: Memory errors during build**
+
 - Vercel free tier has 8GB memory limit
 - Large node_modules can cause issues
 - Try adding `.vercelignore` to exclude unnecessary files
 
 **Issue: Config file not found error**
+
 - Ensure `.vercelignore` does NOT exclude `.vercel/output`
 - The `.vercel/output/config.json` must be available for deployment
 - `.vercel/output` contains essential build artifacts that Vercel needs
@@ -127,6 +159,7 @@ This ensures maximum compatibility and stability for Vercel deployment.
 #### Debug Steps
 
 If the build fails:
+
 1. Check the Build Logs in Vercel dashboard
 2. Compare with local build: `npm run build`
 3. Verify Node.js version: `node --version` (should be 20+)
@@ -138,23 +171,34 @@ If the build fails:
 #### Common Runtime Issues
 
 **Issue: 404 errors on routes**
+
 - Nitro handles routing automatically
 - Check that `.vercel/output/config.json` was generated
 - Verify the build completed successfully
 
 **Issue: Serverless function timeouts**
+
 - Default timeout is 10 seconds on free tier
 - Live streaming should work within timeout limits
 - Check Vercel function logs for timeout errors
 
 **Issue: Environment variables not available**
+
 - Ensure variables are set in Vercel project settings
 - Check variable names match exactly (case-sensitive)
 - Some variables may need to be rebuilt to take effect
 
+**Issue: MongoDB is configured locally but fails on Vercel**
+
+- Verify the connection string is in the Production scope in Vercel
+- Confirm the URI is valid for Atlas and the password is URL-encoded
+- Check the Atlas Network Access allowlist includes Vercel traffic
+- Use the admin dashboard status bar to read the exact server-side reason after deployment
+
 #### Debug Steps
 
 If you encounter runtime errors:
+
 1. Check the Function Logs in Vercel
 2. Verify environment variables are set correctly
 3. Ensure the Nitro preset is configured for Vercel
@@ -164,6 +208,7 @@ If you encounter runtime errors:
 ### Streaming Issues
 
 If video streaming doesn't work:
+
 1. Check browser console for HLS.js errors
 2. Verify HLS.js compatibility with the browser
 3. Check if stream URLs are accessible
@@ -174,6 +219,7 @@ If video streaming doesn't work:
 ## Performance Optimization
 
 The Vercel configuration includes:
+
 - **Static asset caching**: Long-term caching for images and CSS
 - **Edge deployment**: Automatic deployment to edge locations
 - **Serverless functions**: Optimized for fast cold starts
@@ -182,6 +228,7 @@ The Vercel configuration includes:
 ## Updating Deployment
 
 After making changes:
+
 1. Push to GitHub
 2. Vercel automatically triggers a new deployment
 3. Monitor deployment status in dashboard
@@ -190,6 +237,7 @@ After making changes:
 ## Custom Domains
 
 To use a custom domain:
+
 1. Go to Project Settings → Domains
 2. Add your domain
 3. Configure DNS records as instructed
@@ -198,6 +246,7 @@ To use a custom domain:
 ## Monitoring
 
 Vercel provides built-in monitoring:
+
 - **Analytics**: Page views, visitors, geographic distribution
 - **Logs**: Real-time function and build logs
 - **Performance**: Core Web Vitals and performance metrics
@@ -217,6 +266,7 @@ Vercel provides built-in monitoring:
 ## Support
 
 For issues specific to:
+
 - **Vercel**: Check [Vercel Docs](https://vercel.com/docs)
 - **This project**: Open an issue on GitHub
 - **TanStack Start**: [TanStack Start Docs](https://tanstack.com/start)

@@ -3,9 +3,23 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  Plus, Trash2, Star, ArrowUp, ArrowDown, Upload,
-  RotateCcw, Pencil, Search, Tv, X, Check, ChevronDown,
-  GripVertical, Database, Loader2, ShieldAlert,
+  Plus,
+  Trash2,
+  Star,
+  ArrowUp,
+  ArrowDown,
+  Upload,
+  RotateCcw,
+  Pencil,
+  Search,
+  Tv,
+  X,
+  Check,
+  ChevronDown,
+  GripVertical,
+  Database,
+  Loader2,
+  ShieldAlert,
 } from "lucide-react";
 import { useChannels, useChannelMutations, parseCsv } from "@/lib/channels-store";
 import { FALLBACK_LOGO, ALL_GROUPS, type Channel, type ChannelGroup } from "@/lib/channels-data";
@@ -15,10 +29,7 @@ import { useAdminSession } from "@/components/admin/AdminButton";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
-    meta: [
-      { title: "Admin — WC 2026" },
-      { name: "robots", content: "noindex, nofollow" },
-    ],
+    meta: [{ title: "Admin — WC 2026" }, { name: "robots", content: "noindex, nofollow" }],
   }),
   component: AdminPage,
 });
@@ -61,9 +72,7 @@ function AdminPage() {
     onSuccess: async (res) => {
       await qc.invalidateQueries({ queryKey: ["mongo", "status"] });
       await qc.invalidateQueries({ queryKey: ["channels"] });
-      alert(
-        `Seeded. Channels: ${res.channels}, admin: ${res.admin ? "created" : "existed"}.`,
-      );
+      alert(`Seeded. Channels: ${res.channels}, admin: ${res.admin ? "created" : "existed"}.`);
     },
     onError: (e: unknown) => alert(e instanceof Error ? e.message : "Seed failed"),
   });
@@ -74,10 +83,13 @@ function AdminPage() {
     else if (groupFilter !== "All") list = list.filter((c) => c.group === groupFilter);
     if (q.trim()) {
       const n = q.toLowerCase();
-      list = list.filter((c) => c.name.toLowerCase().includes(n) || c.group.toLowerCase().includes(n));
+      list = list.filter(
+        (c) => c.name.toLowerCase().includes(n) || c.group.toLowerCase().includes(n),
+      );
     }
     if (sortKey === "name") list.sort((a, b) => a.name.localeCompare(b.name) * (sortAsc ? 1 : -1));
-    else if (sortKey === "group") list.sort((a, b) => a.group.localeCompare(b.group) * (sortAsc ? 1 : -1));
+    else if (sortKey === "group")
+      list.sort((a, b) => a.group.localeCompare(b.group) * (sortAsc ? 1 : -1));
     else list.sort((a, b) => ((a.order ?? 0) - (b.order ?? 0)) * (sortAsc ? 1 : -1));
     return list;
   }, [channels, q, groupFilter, sortKey, sortAsc]);
@@ -102,7 +114,7 @@ function AdminPage() {
     } else {
       try {
         const json = JSON.parse(text);
-        const arr = Array.isArray(json) ? json : json.channels ?? json.streams;
+        const arr = Array.isArray(json) ? json : (json.channels ?? json.streams);
         if (!Array.isArray(arr)) throw new Error("Bad JSON");
         mutations.importMany.mutate(
           arr.map((r: Record<string, unknown>) => ({
@@ -121,7 +133,10 @@ function AdminPage() {
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc((v) => !v);
-    else { setSortKey(key); setSortAsc(true); }
+    else {
+      setSortKey(key);
+      setSortAsc(true);
+    }
   };
 
   const SortBtn = ({ k, label }: { k: SortKey; label: string }) => (
@@ -130,7 +145,9 @@ function AdminPage() {
       className={`inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider transition ${sortKey === k ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
     >
       {label}
-      <ChevronDown className={`h-3 w-3 transition-transform ${sortKey === k && !sortAsc ? "rotate-180" : ""}`} />
+      <ChevronDown
+        className={`h-3 w-3 transition-transform ${sortKey === k && !sortAsc ? "rotate-180" : ""}`}
+      />
     </button>
   );
 
@@ -150,11 +167,21 @@ function AdminPage() {
         <div className="flex flex-wrap items-center gap-2">
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold transition hover:bg-secondary">
             <Upload className="h-4 w-4" /> Import JSON/CSV
-            <input type="file" accept=".json,.csv" className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.currentTarget.value = ""; }} />
+            <input
+              type="file"
+              accept=".json,.csv"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) onFile(f);
+                e.currentTarget.value = "";
+              }}
+            />
           </label>
           <button
-            onClick={() => { if (confirm("Reset all channels to defaults?")) mutations.reset.mutate(); }}
+            onClick={() => {
+              if (confirm("Reset all channels to defaults?")) mutations.reset.mutate();
+            }}
             className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold transition hover:bg-secondary"
           >
             <RotateCcw className="h-4 w-4" /> Reset
@@ -167,18 +194,24 @@ function AdminPage() {
         connected={!!mongoQ.data?.ok}
         channelCount={mongoQ.data?.channelCount ?? 0}
         sessionCount={mongoQ.data?.activeSessions ?? 0}
+        reason={mongoQ.data?.reason}
         loading={mongoQ.isLoading}
         onSeed={() => seedMut.mutate()}
         seeding={seedMut.isPending}
-        onRefresh={async () => { await Promise.all([mongoQ.refetch(), refetch()]); }}
+        onRefresh={async () => {
+          await Promise.all([mongoQ.refetch(), refetch()]);
+        }}
       />
 
       {/* Add channel form */}
       <div className="mt-4">
         <AddChannelForm
           onAdd={async (c) => {
-            try { await mutations.upsert.mutateAsync(c); }
-            catch (e) { alert(e instanceof Error ? e.message : "Add failed"); }
+            try {
+              await mutations.upsert.mutateAsync(c);
+            } catch (e) {
+              alert(e instanceof Error ? e.message : "Add failed");
+            }
           }}
           disabled={mutations.upsert.isPending}
         />
@@ -189,16 +222,25 @@ function AdminPage() {
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search channels…"
-              className="w-full rounded-lg border border-border bg-card py-2 pl-9 pr-3 text-sm outline-none focus:border-primary" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search channels…"
+              className="w-full rounded-lg border border-border bg-card py-2 pl-9 pr-3 text-sm outline-none focus:border-primary"
+            />
             {q && (
-              <button onClick={() => setQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <button
+                onClick={() => setQ("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
           <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sort:</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Sort:
+            </span>
             <SortBtn k="order" label="Order" />
             <SortBtn k="name" label="Name" />
             <SortBtn k="group" label="Group" />
@@ -207,14 +249,21 @@ function AdminPage() {
 
         <div className="flex flex-wrap gap-1.5">
           {(["All", "★ Top", ...ALL_GROUPS] as const).map((g) => {
-            const count = g === "All" ? channels.length
-              : g === "★ Top" ? totalFeatured
-                : channels.filter((c) => c.group === g).length;
+            const count =
+              g === "All"
+                ? channels.length
+                : g === "★ Top"
+                  ? totalFeatured
+                  : channels.filter((c) => c.group === g).length;
             return (
-              <button key={g} onClick={() => setGroupFilter(g as typeof groupFilter)}
-                className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold transition ${groupFilter === g
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"}`}
+              <button
+                key={g}
+                onClick={() => setGroupFilter(g as typeof groupFilter)}
+                className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold transition ${
+                  groupFilter === g
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                }`}
               >
                 {g} <span className="opacity-70">({count})</span>
               </button>
@@ -240,65 +289,114 @@ function AdminPage() {
             </thead>
             <tbody>
               {isLoading && (
-                <tr><td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">Loading…</td></tr>
+                <tr>
+                  <td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                    Loading…
+                  </td>
+                </tr>
               )}
               {!isLoading && filtered.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">No channels match your filter.</td></tr>
+                <tr>
+                  <td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                    No channels match your filter.
+                  </td>
+                </tr>
               )}
               {filtered.map((c) => {
                 const masterIdx = channels.findIndex((x) => x.id === c.id);
                 return (
-                  <tr key={c.id} className="group/row border-t border-border hover:bg-secondary/20 transition-colors">
+                  <tr
+                    key={c.id}
+                    className="group/row border-t border-border hover:bg-secondary/20 transition-colors"
+                  >
                     <td className="px-2 py-2 text-muted-foreground/30 group-hover/row:text-muted-foreground">
                       <GripVertical className="h-4 w-4" />
                     </td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums">{masterIdx + 1}</td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums">
+                      {masterIdx + 1}
+                    </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2.5">
                         <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-background ring-1 ring-border">
-                          <img src={c.logo || FALLBACK_LOGO} alt="" loading="lazy"
+                          <img
+                            src={c.logo || FALLBACK_LOGO}
+                            alt=""
+                            loading="lazy"
                             className="h-full w-full object-contain p-0.5"
-                            onError={(e) => ((e.currentTarget as HTMLImageElement).src = FALLBACK_LOGO)} />
+                            onError={(e) =>
+                              ((e.currentTarget as HTMLImageElement).src = FALLBACK_LOGO)
+                            }
+                          />
                         </div>
                         <div className="min-w-0">
-                          <div className="font-semibold leading-tight truncate max-w-[160px]">{c.name}</div>
-                          <div className="text-[10px] text-muted-foreground sm:hidden">{c.group}</div>
+                          <div className="font-semibold leading-tight truncate max-w-[160px]">
+                            {c.name}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground sm:hidden">
+                            {c.group}
+                          </div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 py-2 hidden sm:table-cell"><GroupBadge group={c.group} /></td>
+                    <td className="px-3 py-2 hidden sm:table-cell">
+                      <GroupBadge group={c.group} />
+                    </td>
                     <td className="px-3 py-2 hidden lg:table-cell max-w-[240px]">
-                      <span className="block truncate text-[11px] text-muted-foreground font-mono" title={c.url}>{c.url}</span>
+                      <span
+                        className="block truncate text-[11px] text-muted-foreground font-mono"
+                        title={c.url}
+                      >
+                        {c.url}
+                      </span>
                     </td>
                     <td className="px-3 py-2 text-center">
-                      <button onClick={() => mutations.toggleFeatured.mutate(c.id)}
+                      <button
+                        onClick={() => mutations.toggleFeatured.mutate(c.id)}
                         title={c.featured ? "Remove from Top 10" : "Add to Top 10"}
                         disabled={mutations.toggleFeatured.isPending}
-                        className={`inline-flex h-7 w-7 items-center justify-center rounded-full transition ${c.featured
-                          ? "bg-gold/20 text-gold hover:bg-gold/30"
-                          : "bg-secondary text-muted-foreground hover:bg-secondary/80 hover:text-gold"}`}>
+                        className={`inline-flex h-7 w-7 items-center justify-center rounded-full transition ${
+                          c.featured
+                            ? "bg-gold/20 text-gold hover:bg-gold/30"
+                            : "bg-secondary text-muted-foreground hover:bg-secondary/80 hover:text-gold"
+                        }`}
+                      >
                         <Star className={`h-3.5 w-3.5 ${c.featured ? "fill-gold" : ""}`} />
                       </button>
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center justify-end gap-0.5">
-                        <button onClick={() => moveInMaster(c.id, -1)} title="Move up"
-                          className="rounded p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground">
+                        <button
+                          onClick={() => moveInMaster(c.id, -1)}
+                          title="Move up"
+                          className="rounded p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                        >
                           <ArrowUp className="h-3.5 w-3.5" />
                         </button>
-                        <button onClick={() => moveInMaster(c.id, 1)} title="Move down"
-                          className="rounded p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground">
+                        <button
+                          onClick={() => moveInMaster(c.id, 1)}
+                          title="Move down"
+                          className="rounded p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                        >
                           <ArrowDown className="h-3.5 w-3.5" />
                         </button>
-                        <EditChannelModal channel={c} onSave={async (next) => {
-                          try { await mutations.upsert.mutateAsync(next); }
-                          catch (e) { alert(e instanceof Error ? e.message : "Save failed"); }
-                        }} />
+                        <EditChannelModal
+                          channel={c}
+                          onSave={async (next) => {
+                            try {
+                              await mutations.upsert.mutateAsync(next);
+                            } catch (e) {
+                              alert(e instanceof Error ? e.message : "Save failed");
+                            }
+                          }}
+                        />
                         <button
-                          onClick={() => { if (confirm(`Delete "${c.name}"?`)) mutations.remove.mutate(c.id); }}
+                          onClick={() => {
+                            if (confirm(`Delete "${c.name}"?`)) mutations.remove.mutate(c.id);
+                          }}
                           disabled={mutations.remove.isPending}
                           title="Delete"
-                          className="rounded p-1.5 text-muted-foreground hover:bg-live/10 hover:text-live">
+                          className="rounded p-1.5 text-muted-foreground hover:bg-live/10 hover:text-live"
+                        >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
@@ -320,11 +418,19 @@ function AdminPage() {
 }
 
 function DbStatusBar({
-  connected, channelCount, sessionCount, loading, onSeed, seeding, onRefresh,
+  connected,
+  channelCount,
+  sessionCount,
+  reason,
+  loading,
+  onSeed,
+  seeding,
+  onRefresh,
 }: {
   connected: boolean;
   channelCount: number;
   sessionCount: number;
+  reason?: string;
   loading: boolean;
   onSeed: () => void;
   seeding: boolean;
@@ -332,31 +438,49 @@ function DbStatusBar({
 }) {
   const empty = connected && channelCount === 0;
   return (
-    <div className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2 text-xs ${connected
-      ? empty
-        ? "border-gold/40 bg-gold/10"
-        : "border-emerald-500/40 bg-emerald-500/10"
-      : "border-live/40 bg-live/10"}`}>
+    <div
+      className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2 text-xs ${
+        connected
+          ? empty
+            ? "border-gold/40 bg-gold/10"
+            : "border-emerald-500/40 bg-emerald-500/10"
+          : "border-live/40 bg-live/10"
+      }`}
+    >
       <div className="flex items-center gap-2">
-        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> :
-          connected ? <Database className="h-3.5 w-3.5 text-emerald-400" /> : <ShieldAlert className="h-3.5 w-3.5 text-live" />}
+        {loading ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : connected ? (
+          <Database className="h-3.5 w-3.5 text-emerald-400" />
+        ) : (
+          <ShieldAlert className="h-3.5 w-3.5 text-live" />
+        )}
         <span>
-          {loading ? "Checking database…" :
-            !connected ? "MongoDB not reachable" :
-              empty ? "Database is empty" :
-                `MongoDB connected · ${channelCount} channels · ${sessionCount} active session${sessionCount === 1 ? "" : "s"}`}
+          {loading
+            ? "Checking database…"
+            : !connected
+              ? `MongoDB not reachable${reason ? `: ${reason}` : ""}`
+              : empty
+                ? "Database is empty"
+                : `MongoDB connected · ${channelCount} channels · ${sessionCount} active session${sessionCount === 1 ? "" : "s"}`}
         </span>
       </div>
       <div className="flex items-center gap-2">
         {empty && (
-          <button onClick={onSeed} disabled={seeding}
-            className="inline-flex items-center gap-1.5 rounded-md bg-gold px-2.5 py-1 font-semibold text-background disabled:opacity-60">
+          <button
+            onClick={onSeed}
+            disabled={seeding}
+            className="inline-flex items-center gap-1.5 rounded-md bg-gold px-2.5 py-1 font-semibold text-background disabled:opacity-60"
+          >
             {seeding && <Loader2 className="h-3 w-3 animate-spin" />}
             Seed from defaults
           </button>
         )}
-        <button onClick={onRefresh} title="Refresh"
-          className="rounded-md border border-border bg-card px-2 py-1 font-semibold hover:bg-secondary">
+        <button
+          onClick={onRefresh}
+          title="Refresh"
+          className="rounded-md border border-border bg-card px-2 py-1 font-semibold hover:bg-secondary"
+        >
           Refresh
         </button>
       </div>
@@ -380,7 +504,9 @@ const GROUP_COLORS: Record<string, string> = {
 function GroupBadge({ group }: { group: string }) {
   const cls = GROUP_COLORS[group] ?? "bg-secondary text-muted-foreground";
   return (
-    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${cls}`}>
+    <span
+      className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${cls}`}
+    >
       {group}
     </span>
   );
@@ -388,12 +514,24 @@ function GroupBadge({ group }: { group: string }) {
 
 function AddChannelForm({ onAdd, disabled }: { onAdd: (c: Channel) => void; disabled?: boolean }) {
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", url: "", logo: "", group: "Sports" as ChannelGroup, featured: false });
+  const [form, setForm] = useState({
+    name: "",
+    url: "",
+    logo: "",
+    group: "Sports" as ChannelGroup,
+    featured: false,
+  });
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.url) return;
     onAdd({
-      id: form.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40) + "-" + Math.random().toString(36).slice(2, 6),
+      id:
+        form.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .slice(0, 40) +
+        "-" +
+        Math.random().toString(36).slice(2, 6),
       ...form,
     });
     setForm({ name: "", url: "", logo: "", group: "Sports", featured: false });
@@ -402,42 +540,74 @@ function AddChannelForm({ onAdd, disabled }: { onAdd: (c: Channel) => void; disa
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <button onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-5 py-3.5 text-left transition hover:bg-secondary/40">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-5 py-3.5 text-left transition hover:bg-secondary/40"
+      >
         <span className="flex items-center gap-2 font-display font-semibold">
           <Plus className="h-4 w-4 text-primary" /> Add new channel
         </span>
-        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown
+          className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+        />
       </button>
 
       {open && (
         <form onSubmit={submit} className="border-t border-border px-5 pb-5 pt-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <input placeholder="Channel name *" value={form.name} required
+            <input
+              placeholder="Channel name *"
+              value={form.name}
+              required
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
-            <input placeholder="m3u8 stream URL *" value={form.url} required
+              className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+            />
+            <input
+              placeholder="m3u8 stream URL *"
+              value={form.url}
+              required
               onChange={(e) => setForm({ ...form, url: e.target.value })}
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary lg:col-span-2" />
-            <input placeholder="Logo URL" value={form.logo}
+              className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary lg:col-span-2"
+            />
+            <input
+              placeholder="Logo URL"
+              value={form.logo}
               onChange={(e) => setForm({ ...form, logo: e.target.value })}
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
-            <select value={form.group} onChange={(e) => setForm({ ...form, group: e.target.value as ChannelGroup })}
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary">
-              {ALL_GROUPS.map((g) => <option key={g}>{g}</option>)}
+              className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+            />
+            <select
+              value={form.group}
+              onChange={(e) => setForm({ ...form, group: e.target.value as ChannelGroup })}
+              className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+            >
+              {ALL_GROUPS.map((g) => (
+                <option key={g}>{g}</option>
+              ))}
             </select>
           </div>
           <div className="mt-3 flex items-center justify-between">
             <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground select-none">
-              <input type="checkbox" checked={form.featured}
-                onChange={(e) => setForm({ ...form, featured: e.target.checked })} className="accent-primary" />
+              <input
+                type="checkbox"
+                checked={form.featured}
+                onChange={(e) => setForm({ ...form, featured: e.target.checked })}
+                className="accent-primary"
+              />
               Add to Top 10
             </label>
             <div className="flex gap-2">
-              <button type="button" onClick={() => setOpen(false)}
-                className="rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary">Cancel</button>
-              <button type="submit" disabled={disabled}
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary-glow disabled:opacity-60">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={disabled}
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary-glow disabled:opacity-60"
+              >
                 <Check className="h-4 w-4" /> Add channel
               </button>
             </div>
@@ -455,25 +625,39 @@ function EditChannelModal({ channel, onSave }: { channel: Channel; onSave: (c: C
 
   return (
     <>
-      <button onClick={() => setOpen(true)} title="Edit"
-        className="rounded p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground">
+      <button
+        onClick={() => setOpen(true)}
+        title="Edit"
+        className="rounded p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+      >
         <Pencil className="h-3.5 w-3.5" />
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md animate-fade-up"
-          onClick={() => setOpen(false)}>
-          <div className="w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl"
-            onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md animate-fade-up"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-border px-6 py-4">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 overflow-hidden rounded-lg bg-background ring-1 ring-border">
-                  <img src={form.logo || FALLBACK_LOGO} alt="" className="h-full w-full object-contain p-0.5"
-                    onError={(e) => ((e.currentTarget as HTMLImageElement).src = FALLBACK_LOGO)} />
+                  <img
+                    src={form.logo || FALLBACK_LOGO}
+                    alt=""
+                    className="h-full w-full object-contain p-0.5"
+                    onError={(e) => ((e.currentTarget as HTMLImageElement).src = FALLBACK_LOGO)}
+                  />
                 </div>
                 <h3 className="font-display text-lg font-bold">Edit channel</h3>
               </div>
-              <button onClick={() => setOpen(false)} className="rounded-full p-1.5 text-muted-foreground hover:bg-secondary">
+              <button
+                onClick={() => setOpen(false)}
+                className="rounded-full p-1.5 text-muted-foreground hover:bg-secondary"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -481,30 +665,55 @@ function EditChannelModal({ channel, onSave }: { channel: Channel; onSave: (c: C
             <div className="space-y-3 p-6">
               {(["name", "url", "logo"] as const).map((k) => (
                 <label key={k} className="block">
-                  <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{k}</span>
-                  <input value={form[k] || ""} onChange={(e) => setForm({ ...form, [k]: e.target.value })}
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+                  <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    {k}
+                  </span>
+                  <input
+                    value={form[k] || ""}
+                    onChange={(e) => setForm({ ...form, [k]: e.target.value })}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                  />
                 </label>
               ))}
               <label className="block">
-                <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Group</span>
-                <select value={form.group} onChange={(e) => setForm({ ...form, group: e.target.value as ChannelGroup })}
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary">
-                  {ALL_GROUPS.map((g) => <option key={g}>{g}</option>)}
+                <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Group
+                </span>
+                <select
+                  value={form.group}
+                  onChange={(e) => setForm({ ...form, group: e.target.value as ChannelGroup })}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                >
+                  {ALL_GROUPS.map((g) => (
+                    <option key={g}>{g}</option>
+                  ))}
                 </select>
               </label>
               <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground select-none">
-                <input type="checkbox" checked={!!form.featured}
-                  onChange={(e) => setForm({ ...form, featured: e.target.checked })} className="accent-primary" />
+                <input
+                  type="checkbox"
+                  checked={!!form.featured}
+                  onChange={(e) => setForm({ ...form, featured: e.target.checked })}
+                  className="accent-primary"
+                />
                 Featured (Top 10)
               </label>
             </div>
 
             <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
-              <button onClick={() => setOpen(false)}
-                className="rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary">Cancel</button>
-              <button onClick={() => { onSave(form); setOpen(false); }}
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary-glow">
+              <button
+                onClick={() => setOpen(false)}
+                className="rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  onSave(form);
+                  setOpen(false);
+                }}
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary-glow"
+              >
                 <Check className="h-4 w-4" /> Save
               </button>
             </div>
@@ -514,5 +723,3 @@ function EditChannelModal({ channel, onSave }: { channel: Channel; onSave: (c: C
     </>
   );
 }
-
-

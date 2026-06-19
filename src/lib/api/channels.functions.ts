@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { Db, Collection } from "mongodb";
 import { ALL_GROUPS, DEFAULT_CHANNELS, type Channel, type ChannelGroup } from "@/lib/channels-data";
 import { MATCHES, TEAMS, type Match, type Team } from "@/lib/worldcup-data";
-import { getDb, getMongoClient } from "@/lib/mongo.server";
+import { getDb, getMongoClient, getMongoDbName } from "@/lib/mongo.server";
 
 /**
  * Server-side channel storage backed by MongoDB.
@@ -15,7 +15,6 @@ import { getDb, getMongoClient } from "@/lib/mongo.server";
  * UI still works in dev. Set the env var in production to persist data.
  */
 
-const DB_NAME = process.env.MONGODB_DB || "wc2026";
 const COL_CHANNELS = "channels";
 const COL_MATCHES = "matches";
 const COL_TEAMS = "teams";
@@ -85,7 +84,10 @@ async function teamsCol(): Promise<Collection<Team>> {
 export const listChannels = createServerFn({ method: "GET" }).handler(
   async (): Promise<Channel[]> => {
     const col = await channelsCol();
-    return col.find({}, { projection: { _id: 0 } }).sort({ order: 1 }).toArray();
+    return col
+      .find({}, { projection: { _id: 0 } })
+      .sort({ order: 1 })
+      .toArray();
   },
 );
 
@@ -95,13 +97,17 @@ export const upsertChannel = createServerFn({ method: "POST" })
     const incoming = data as Channel;
     const col = await channelsCol();
     const existing = await col.findOne({ id: incoming.id });
-    
+
     let newOrder = incoming.order;
     if (newOrder === undefined) {
       if (existing?.order !== undefined) {
         newOrder = existing.order;
       } else {
-        const last = await col.find({}, { projection: { order: 1 } }).sort({ order: -1 }).limit(1).toArray();
+        const last = await col
+          .find({}, { projection: { order: 1 } })
+          .sort({ order: -1 })
+          .limit(1)
+          .toArray();
         newOrder = (last[0]?.order ?? 0) + 1;
       }
     }
@@ -156,9 +162,7 @@ export const reorderChannels = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const col = await channelsCol();
     await Promise.all(
-      data.orderedIds.map((id, idx) =>
-        col.updateOne({ id }, { $set: { order: idx } }),
-      ),
+      data.orderedIds.map((id, idx) => col.updateOne({ id }, { $set: { order: idx } })),
     );
     return { ok: true };
   });
@@ -186,8 +190,11 @@ export const importChannels = createServerFn({ method: "POST" })
         continue;
       }
       const id = `imp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const last = await col.find({}, { projection: { order: 1 } })
-        .sort({ order: -1 }).limit(1).toArray();
+      const last = await col
+        .find({}, { projection: { order: 1 } })
+        .sort({ order: -1 })
+        .limit(1)
+        .toArray();
       const order = (last[0]?.order ?? 0) + 1;
       await col.insertOne({
         id,
@@ -210,31 +217,27 @@ export const importChannels = createServerFn({ method: "POST" })
 // the site still renders before the first seed run.
 // ------------------------------------------------------------------
 
-export const listMatches = createServerFn({ method: "GET" }).handler(
-  async (): Promise<Match[]> => {
-    try {
-      const col = await matchesCol();
-      const count = await col.estimatedDocumentCount();
-      if (count === 0) return MATCHES;
-      return col.find({}, { projection: { _id: 0 } }).toArray();
-    } catch {
-      return MATCHES;
-    }
-  },
-);
+export const listMatches = createServerFn({ method: "GET" }).handler(async (): Promise<Match[]> => {
+  try {
+    const col = await matchesCol();
+    const count = await col.estimatedDocumentCount();
+    if (count === 0) return MATCHES;
+    return col.find({}, { projection: { _id: 0 } }).toArray();
+  } catch {
+    return MATCHES;
+  }
+});
 
-export const listTeams = createServerFn({ method: "GET" }).handler(
-  async (): Promise<Team[]> => {
-    try {
-      const col = await teamsCol();
-      const count = await col.estimatedDocumentCount();
-      if (count === 0) return TEAMS;
-      return col.find({}, { projection: { _id: 0 } }).toArray();
-    } catch {
-      return TEAMS;
-    }
-  },
-);
+export const listTeams = createServerFn({ method: "GET" }).handler(async (): Promise<Team[]> => {
+  try {
+    const col = await teamsCol();
+    const count = await col.estimatedDocumentCount();
+    if (count === 0) return TEAMS;
+    return col.find({}, { projection: { _id: 0 } }).toArray();
+  } catch {
+    return TEAMS;
+  }
+});
 
 const IdInput = z.object({ id: z.string().min(1) });
 
@@ -243,10 +246,7 @@ export const getMatchById = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     try {
       const col = await matchesCol();
-      const found = await col.findOne(
-        { id: data.id },
-        { projection: { _id: 0 } },
-      );
+      const found = await col.findOne({ id: data.id }, { projection: { _id: 0 } });
       if (found) return { match: found as Match };
     } catch {
       // fall through to bundled defaults
@@ -268,7 +268,7 @@ export const getMongoStatus = createServerFn({ method: "GET" }).handler(
   async (): Promise<MongoStatus> => {
     try {
       const c = await getMongoClient();
-      const db: Db = c.db(DB_NAME);
+      const db: Db = c.db(getMongoDbName());
       const channelCount = await db.collection(COL_CHANNELS).countDocuments();
       return { ok: true, channelCount, activeSessions: _activeSessions };
     } catch (e) {

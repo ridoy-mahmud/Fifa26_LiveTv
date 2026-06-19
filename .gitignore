@@ -73,3 +73,5 @@ nul
 *.local
 secrets/
 credentials/
+
+.vercel

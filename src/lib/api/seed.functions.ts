@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getDb } from "@/lib/mongo.server";
+import { getDb, getMongoUri } from "@/lib/mongo.server";
 import { DEFAULT_CHANNELS, type Channel } from "@/lib/channels-data";
 import { MATCHES, TEAMS, type Match, type Team } from "@/lib/worldcup-data";
 
@@ -37,9 +37,7 @@ const COL_MATCHES = "matches";
 
 export const seedIfEmpty = createServerFn({ method: "POST" }).handler(
   async (): Promise<SeedResult> => {
-    if (!process.env.MONGODB_URI) {
-      throw new Error("MONGODB_URI is not configured");
-    }
+    getMongoUri();
     const db = await getDb();
 
     // Channels
