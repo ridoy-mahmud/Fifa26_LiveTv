@@ -71,6 +71,7 @@ async function createClient(): Promise<import("mongodb").MongoClient> {
     },
     // TLS is always required by Atlas; make it explicit
     tls: true,
+    authMechanism: "SCRAM-SHA-256",
     runtimeAdapters: {
       os: {
         release: os.release,
