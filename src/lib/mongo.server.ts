@@ -12,7 +12,10 @@
 // We also accept common aliases such as DATABASE_URL and MONGODB_URL so a
 // Vercel deployment keeps working even if the env name differs from local.
 
+import { createRequire } from "node:module";
+
 const DEFAULT_DB = "wc2026";
+const require = createRequire(import.meta.url);
 
 const MONGO_URI_KEYS = ["MONGODB_URI", "DATABASE_URL", "MONGODB_URL", "MONGO_URL"] as const;
 const MONGO_DB_KEYS = ["MONGODB_DB", "DATABASE_NAME", "MONGO_DB"] as const;
@@ -52,7 +55,7 @@ declare global {
 let connecting: Promise<import("mongodb").MongoClient> | null = null;
 
 async function createClient(): Promise<import("mongodb").MongoClient> {
-  const { MongoClient, ServerApiVersion } = await import("mongodb");
+  const { MongoClient, ServerApiVersion } = require("mongodb") as typeof import("mongodb");
   const uri = getMongoUri();
   const client = new MongoClient(uri, {
     maxPoolSize: 10,
