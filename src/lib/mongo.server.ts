@@ -18,6 +18,11 @@ const DEFAULT_DB = "wc2026";
 
 const MONGO_URI_KEYS = ["MONGODB_URI", "DATABASE_URL", "MONGODB_URL", "MONGO_URL"] as const;
 const MONGO_DB_KEYS = ["MONGODB_DB", "DATABASE_NAME", "MONGO_DB"] as const;
+const MONGO_AUTH_SOURCE_KEYS = [
+  "MONGODB_AUTH_SOURCE",
+  "MONGO_AUTH_SOURCE",
+  "DATABASE_AUTH_SOURCE",
+] as const;
 
 function readEnv(keys: readonly string[]): string | undefined {
   for (const key of keys) {
@@ -30,6 +35,28 @@ function readEnv(keys: readonly string[]): string | undefined {
   return undefined;
 }
 
+function normalizeMongoUri(rawUri: string): string {
+  const cleaned = rawUri.trim().replace(/^['\"]|['\"]$/g, "");
+  try {
+    const url = new URL(cleaned);
+
+    if (url.username) {
+      url.username = decodeURIComponent(url.username);
+    }
+    if (url.password) {
+      url.password = decodeURIComponent(url.password);
+    }
+
+    if (!url.searchParams.has("authSource")) {
+      url.searchParams.set("authSource", readEnv(MONGO_AUTH_SOURCE_KEYS) || "admin");
+    }
+
+    return url.toString();
+  } catch {
+    return cleaned;
+  }
+}
+
 export function getMongoUri(): string {
   const uri = readEnv(MONGO_URI_KEYS);
   if (!uri) {
@@ -37,7 +64,7 @@ export function getMongoUri(): string {
       "MongoDB connection string is not configured. Set MONGODB_URI (or DATABASE_URL / MONGODB_URL) in Vercel project env vars.",
     );
   }
-  return uri;
+  return normalizeMongoUri(uri);
 }
 
 export function getMongoDbName(): string {
