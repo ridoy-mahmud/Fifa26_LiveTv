@@ -1,5 +1,5 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -25,7 +25,6 @@ import { useChannels, useChannelMutations, parseCsv } from "@/lib/channels-store
 import { FALLBACK_LOGO, ALL_GROUPS, type Channel, type ChannelGroup } from "@/lib/channels-data";
 import { getMongoStatus } from "@/lib/api/channels.functions";
 import { seedIfEmpty } from "@/lib/api/seed.functions";
-import { useAdminSession } from "@/components/admin/AdminButton";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -37,15 +36,11 @@ export const Route = createFileRoute("/admin")({
 type SortKey = "order" | "name" | "group";
 
 function AdminPage() {
-  const router = useRouter();
   const { channels, isLoading, refetch } = useChannels();
   const mutations = useChannelMutations();
-  const { admin, isLoading: authLoading } = useAdminSession();
   const statusFn = useServerFn(getMongoStatus);
   const seedFn = useServerFn(seedIfEmpty);
   const qc = useQueryClient();
-
-  const [authed, setAuthed] = useState(false);
   const [q, setQ] = useState("");
   const [groupFilter, setGroupFilter] = useState<ChannelGroup | "All" | "★ Top">("All");
   const [sortKey, setSortKey] = useState<SortKey>("order");
@@ -57,15 +52,6 @@ function AdminPage() {
     staleTime: 30_000,
     retry: false,
   });
-
-  useEffect(() => {
-    if (authLoading) return;
-    if (!admin) {
-      router.navigate({ to: "/" });
-      return;
-    }
-    setAuthed(true);
-  }, [admin, authLoading, router]);
 
   const seedMut = useMutation({
     mutationFn: () => seedFn(),
@@ -93,8 +79,6 @@ function AdminPage() {
     else list.sort((a, b) => ((a.order ?? 0) - (b.order ?? 0)) * (sortAsc ? 1 : -1));
     return list;
   }, [channels, q, groupFilter, sortKey, sortAsc]);
-
-  if (!authed) return null;
 
   const totalFeatured = channels.filter((c) => c.featured).length;
 

@@ -1,12 +1,12 @@
 import { b as QueryClient } from "../_libs/tanstack__query-core.mjs";
-import { Q as QueryClientProvider, u as useQueryClient, a as useMutation, b as useQuery } from "../_libs/tanstack__react-query.mjs";
+import { Q as QueryClientProvider } from "../_libs/tanstack__react-query.mjs";
 import { c as createRouter, a as createRootRouteWithContext, u as useRouter, L as Link, O as Outlet, H as HeadContent, S as Scripts, b as createFileRoute, l as lazyRouteComponent } from "../_libs/tanstack__react-router.mjs";
-import { S as notFound, m as isRedirect } from "../_libs/tanstack__router-core.mjs";
+import { S as notFound } from "../_libs/tanstack__router-core.mjs";
 import { r as reactExports, j as jsxRuntimeExports } from "../_libs/react.mjs";
+import { g as getTeam, T as TEAMS, M as MATCHES, A as ALL_GROUPS } from "./worldcup-data-CJq_BX3J.mjs";
 import { c as createServerFn, T as TSS_SERVER_FUNCTION, g as getServerFnById } from "./index.mjs";
-import { g as getTeam, T as TEAMS, M as MATCHES, A as ALL_GROUPS } from "./worldcup-data-DNtykFWW.mjs";
 import { f as format } from "../_libs/date-fns.mjs";
-import { W as Wifi, G as Github, L as LayoutDashboard, a as LogOut, S as ShieldCheck, X, b as LoaderCircle } from "../_libs/lucide-react.mjs";
+import { W as Wifi, G as Github, L as LayoutDashboard } from "../_libs/lucide-react.mjs";
 import { o as objectType, s as stringType, n as numberType, b as booleanType, e as enumType, a as arrayType } from "../_libs/zod.mjs";
 import "../_libs/react-dom.mjs";
 import "util";
@@ -24,23 +24,7 @@ import "node:async_hooks";
 import "../_libs/h3-v2.mjs";
 import "../_libs/rou3.mjs";
 import "../_libs/srvx.mjs";
-function useServerFn(serverFn) {
-  const router2 = useRouter();
-  return reactExports.useCallback(async (...args) => {
-    try {
-      const res = await serverFn(...args);
-      if (isRedirect(res)) throw res;
-      return res;
-    } catch (err) {
-      if (isRedirect(err)) {
-        err.options._fromLocation = router2.stores.location.get();
-        return router2.navigate(router2.resolveRedirect(err).options);
-      }
-      throw err;
-    }
-  }, [router2, serverFn]);
-}
-const appCss = "/assets/styles-C0XkPPdb.css";
+const appCss = "/assets/styles-CETWnbQn.css";
 function reportLovableError(error, context = {}) {
   if (typeof window === "undefined") return;
   window.__lovableEvents?.captureException?.(
@@ -57,186 +41,17 @@ function reportLovableError(error, context = {}) {
     }
   );
 }
-var createSsrRpc = (functionId) => {
-  const url = "/_serverFn/" + functionId;
-  const serverFnMeta = { id: functionId };
-  const fn = async (...args) => {
-    return (await getServerFnById(functionId))(...args);
-  };
-  return Object.assign(fn, {
-    url,
-    serverFnMeta,
-    [TSS_SERVER_FUNCTION]: true
-  });
-};
-const LoginInput = objectType({
-  email: stringType().email().max(255),
-  password: stringType().min(1).max(200)
-});
-const adminLogin = createServerFn({
-  method: "POST"
-}).validator((d) => LoginInput.parse(d)).handler(createSsrRpc("20a78c18b0630a37383f6b8ccf6985fcaa46b2b7e5c8768b05a94d463c1ca324"));
-const adminMe = createServerFn({
-  method: "GET"
-}).handler(createSsrRpc("dd94d4a392bb45b7f791f816ec920c3a47ac3d254a29a721a9bee7d71f1abfd7"));
-const adminLogout = createServerFn({
-  method: "POST"
-}).handler(createSsrRpc("4557679850f5bc8eef8d2f67e1b26e8ea97f9dcabf61a11617b65e9ccf20d934"));
-const adminQueryKey = ["admin", "me"];
-function useAdminSession() {
-  const fetch = useServerFn(adminMe);
-  const query = useQuery({
-    queryKey: adminQueryKey,
-    queryFn: () => fetch(),
-    staleTime: 6e4,
-    retry: false
-  });
-  return {
-    admin: query.data?.admin ?? null,
-    isLoading: query.isLoading,
-    refetch: query.refetch
-  };
-}
 function AdminButton() {
   const router2 = useRouter();
-  const qc = useQueryClient();
-  const { admin } = useAdminSession();
-  const loginFn = useServerFn(adminLogin);
-  const logoutFn = useServerFn(adminLogout);
-  const [open, setOpen] = reactExports.useState(false);
-  const [email, setEmail] = reactExports.useState("");
-  const [pw, setPw] = reactExports.useState("");
-  const [err, setErr] = reactExports.useState(null);
-  reactExports.useEffect(() => {
-    if (admin) {
-      window.dispatchEvent(new CustomEvent("admin:changed"));
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "button",
+    {
+      onClick: () => router2.navigate({ to: "/admin" }),
+      title: "Admin dashboard",
+      className: "flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-primary ring-1 ring-primary/40 transition hover:bg-primary/25",
+      children: /* @__PURE__ */ jsxRuntimeExports.jsx(LayoutDashboard, { className: "h-4 w-4" })
     }
-  }, [admin]);
-  const loginMut = useMutation({
-    mutationFn: (input) => loginFn({ data: input }),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: adminQueryKey });
-      setOpen(false);
-      setEmail("");
-      setPw("");
-      router2.navigate({ to: "/admin" });
-    },
-    onError: (e) => setErr(e instanceof Error ? e.message : "Sign-in failed")
-  });
-  const logoutMut = useMutation({
-    mutationFn: () => logoutFn(),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: adminQueryKey });
-      router2.navigate({ to: "/" });
-    }
-  });
-  const onSubmit = (e) => {
-    e.preventDefault();
-    setErr(null);
-    loginMut.mutate({ email, password: pw });
-  };
-  const authed = !!admin;
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-    authed ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "button",
-        {
-          onClick: () => router2.navigate({ to: "/admin" }),
-          title: "Admin dashboard",
-          className: "flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-primary ring-1 ring-primary/40 transition hover:bg-primary/25",
-          children: /* @__PURE__ */ jsxRuntimeExports.jsx(LayoutDashboard, { className: "h-4 w-4" })
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "button",
-        {
-          onClick: () => logoutMut.mutate(),
-          title: "Sign out",
-          className: "flex h-8 w-8 items-center justify-center rounded-full bg-secondary/60 text-muted-foreground transition hover:text-foreground",
-          children: /* @__PURE__ */ jsxRuntimeExports.jsx(LogOut, { className: "h-4 w-4" })
-        }
-      )
-    ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "button",
-      {
-        onClick: () => setOpen(true),
-        title: "Admin",
-        className: "flex h-8 w-8 items-center justify-center rounded-full bg-secondary/60 text-muted-foreground transition hover:bg-primary/15 hover:text-primary",
-        children: /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldCheck, { className: "h-4 w-4" })
-      }
-    ),
-    open && /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "div",
-      {
-        className: "fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md animate-fade-up",
-        onClick: () => setOpen(false),
-        children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "div",
-          {
-            className: "relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-2xl",
-            onClick: (e) => e.stopPropagation(),
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-gradient-to-br from-primary/20 via-card to-card px-6 pt-6 pb-4", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  "button",
-                  {
-                    onClick: () => setOpen(false),
-                    className: "absolute right-3 top-3 rounded-full p-1.5 text-muted-foreground hover:bg-secondary",
-                    children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "h-4 w-4" })
-                  }
-                ),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-12 w-12 items-center justify-center rounded-xl bg-primary/20 ring-1 ring-primary/40", children: /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldCheck, { className: "h-6 w-6 text-primary" }) }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "mt-3 font-display text-2xl font-bold", children: "Admin sign-in" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted-foreground", children: "Manage channels and the Top 10 lineup." })
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("form", { onSubmit, className: "space-y-4 px-6 pb-6 pt-4", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "block", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground", children: "Email" }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(
-                    "input",
-                    {
-                      type: "email",
-                      required: true,
-                      autoFocus: true,
-                      value: email,
-                      onChange: (e) => setEmail(e.target.value),
-                      className: "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-                    }
-                  )
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "block", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground", children: "Password" }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(
-                    "input",
-                    {
-                      type: "password",
-                      required: true,
-                      value: pw,
-                      onChange: (e) => setPw(e.target.value),
-                      className: "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-                    }
-                  )
-                ] }),
-                err && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "rounded-md border border-live/40 bg-live/10 px-3 py-2 text-xs text-live", children: err }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                  "button",
-                  {
-                    type: "submit",
-                    disabled: loginMut.isPending,
-                    className: "flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary-glow disabled:opacity-60",
-                    children: [
-                      loginMut.isPending && /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-4 w-4 animate-spin" }),
-                      "Sign in"
-                    ]
-                  }
-                )
-              ] })
-            ]
-          }
-        )
-      }
-    )
-  ] });
+  );
 }
 const LOGO = "https://i.ibb.co.com/xqDjvtSg/fifa-world-cup-2026-logo-white.png";
 const links = [
@@ -543,7 +358,7 @@ const Route$9 = createFileRoute("/watch")({
   }),
   component: lazyRouteComponent($$splitComponentImporter$8, "component")
 });
-const $$splitComponentImporter$7 = () => import("./teams-_x1g63zh.mjs");
+const $$splitComponentImporter$7 = () => import("./teams-Cu2ZBtNP.mjs");
 const Route$8 = createFileRoute("/teams")({
   head: () => ({
     meta: [{
@@ -573,7 +388,7 @@ const Route$7 = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
       GET: async () => {
-        const { MATCHES: MATCHES2, TEAMS: TEAMS2 } = await import("./worldcup-data-DNtykFWW.mjs").then((n) => n.w);
+        const { MATCHES: MATCHES2, TEAMS: TEAMS2 } = await import("./worldcup-data-CJq_BX3J.mjs").then((n) => n.w);
         const entries = [
           { path: "/", changefreq: "daily", priority: "1.0" },
           { path: "/schedule", changefreq: "daily", priority: "0.9" },
@@ -605,7 +420,7 @@ const Route$7 = createFileRoute("/sitemap.xml")({
     }
   }
 });
-const $$splitComponentImporter$6 = () => import("./schedule-D8_NDfIv.mjs");
+const $$splitComponentImporter$6 = () => import("./schedule-DnB_K8QK.mjs");
 const Route$6 = createFileRoute("/schedule")({
   head: () => ({
     meta: [{
@@ -630,7 +445,7 @@ const Route$6 = createFileRoute("/schedule")({
   }),
   component: lazyRouteComponent($$splitComponentImporter$6, "component")
 });
-const $$splitComponentImporter$5 = () => import("./live-djfqOTbH.mjs");
+const $$splitComponentImporter$5 = () => import("./live-BkE9ecLm.mjs");
 const Route$5 = createFileRoute("/live")({
   head: () => ({
     meta: [{
@@ -649,7 +464,7 @@ const Route$5 = createFileRoute("/live")({
   }),
   component: lazyRouteComponent($$splitComponentImporter$5, "component")
 });
-const $$splitComponentImporter$4 = () => import("./groups-CTo3G-zc.mjs");
+const $$splitComponentImporter$4 = () => import("./groups-CIvRBSqm.mjs");
 const Route$4 = createFileRoute("/groups")({
   head: () => ({
     meta: [{
@@ -674,7 +489,7 @@ const Route$4 = createFileRoute("/groups")({
   }),
   component: lazyRouteComponent($$splitComponentImporter$4, "component")
 });
-const $$splitComponentImporter$3 = () => import("./admin-Bh3_dI2N.mjs");
+const $$splitComponentImporter$3 = () => import("./admin-CmM3KT26.mjs");
 const Route$3 = createFileRoute("/admin")({
   head: () => ({
     meta: [{
@@ -686,7 +501,7 @@ const Route$3 = createFileRoute("/admin")({
   }),
   component: lazyRouteComponent($$splitComponentImporter$3, "component")
 });
-const $$splitComponentImporter$2 = () => import("./index-Chrf89A4.mjs");
+const $$splitComponentImporter$2 = () => import("./index-Jc3N6AOC.mjs");
 const Route$2 = createFileRoute("/")({
   head: () => ({
     meta: [{
@@ -713,7 +528,7 @@ const Route$2 = createFileRoute("/")({
 });
 const $$splitErrorComponentImporter$1 = () => import("./teams._code-Blkv86Xf.mjs");
 const $$splitNotFoundComponentImporter$1 = () => import("./teams._code-CbXdr24X.mjs");
-const $$splitComponentImporter$1 = () => import("./teams._code-Bpvg_5Q2.mjs");
+const $$splitComponentImporter$1 = () => import("./teams._code-jy8-7lTS.mjs");
 const Route$1 = createFileRoute("/teams/$code")({
   loader: ({
     params
@@ -755,6 +570,18 @@ const Route$1 = createFileRoute("/teams/$code")({
   notFoundComponent: lazyRouteComponent($$splitNotFoundComponentImporter$1, "notFoundComponent"),
   errorComponent: lazyRouteComponent($$splitErrorComponentImporter$1, "errorComponent")
 });
+var createSsrRpc = (functionId) => {
+  const url = "/_serverFn/" + functionId;
+  const serverFnMeta = { id: functionId };
+  const fn = async (...args) => {
+    return (await getServerFnById(functionId))(...args);
+  };
+  return Object.assign(fn, {
+    url,
+    serverFnMeta,
+    [TSS_SERVER_FUNCTION]: true
+  });
+};
 const ChannelInput = objectType({
   id: stringType().min(1),
   name: stringType().min(1),
@@ -836,7 +663,7 @@ const getMongoStatus = createServerFn({
 }).handler(createSsrRpc("6a5d1c579e0c5f653528260f2a8441d75ad8eec1dbaf5715f3caedb6ef47078c"));
 const $$splitErrorComponentImporter = () => import("./matches._id-CkEgbDnQ.mjs");
 const $$splitNotFoundComponentImporter = () => import("./matches._id-BgFvS8yN.mjs");
-const $$splitComponentImporter = () => import("./matches._id-CPDB_09-.mjs");
+const $$splitComponentImporter = () => import("./matches._id-CTZvHmlK.mjs");
 const Route = createFileRoute("/matches/$id")({
   loader: async ({
     params
@@ -994,19 +821,17 @@ const router = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProper
 export {
   Route$1 as R,
   listMatches as a,
-  useAdminSession as b,
+  listChannels as b,
   createSsrRpc as c,
-  listChannels as d,
-  upsertChannel as e,
-  deleteChannel as f,
+  deleteChannel as d,
+  replaceAllChannels as e,
+  Route as f,
   getMongoStatus as g,
-  replaceAllChannels as h,
+  router as h,
   importChannels as i,
-  Route as j,
-  router as k,
   listTeams as l,
   patchChannel as p,
   reorderChannels as r,
   toggleFeatured as t,
-  useServerFn as u
+  upsertChannel as u
 };

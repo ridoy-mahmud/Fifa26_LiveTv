@@ -1,4 +1,13 @@
+import { T as TSS_SERVER_FUNCTION } from "./index.mjs";
 import * as os from "node:os";
+var createServerRpc = (serverFnMeta, splitImportFn) => {
+  const url = "/_serverFn/" + serverFnMeta.id;
+  return Object.assign(splitImportFn, {
+    url,
+    serverFnMeta,
+    [TSS_SERVER_FUNCTION]: true
+  });
+};
 const DEFAULT_DB = "wc2026";
 const MONGO_URI_KEYS = ["MONGODB_URI", "DATABASE_URL", "MONGODB_URL", "MONGO_URL"];
 const MONGO_DB_KEYS = ["MONGODB_DB", "DATABASE_NAME", "MONGO_DB"];
@@ -109,6 +118,7 @@ async function getDb() {
 export {
   getMongoDbName as a,
   getDb as b,
-  getMongoUri as c,
+  createServerRpc as c,
+  getMongoUri as d,
   getMongoClient as g
 };

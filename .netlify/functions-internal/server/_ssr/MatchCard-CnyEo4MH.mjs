@@ -1,6 +1,6 @@
 import { j as jsxRuntimeExports, r as reactExports } from "../_libs/react.mjs";
 import { L as Link } from "../_libs/tanstack__react-router.mjs";
-import { g as getTeam, f as flagUrl } from "./worldcup-data-DNtykFWW.mjs";
+import { g as getTeam, f as flagUrl } from "./worldcup-data-CJq_BX3J.mjs";
 import { C as Clock } from "../_libs/lucide-react.mjs";
 import { f as format } from "../_libs/date-fns.mjs";
 function useCountdown(target, enabled) {

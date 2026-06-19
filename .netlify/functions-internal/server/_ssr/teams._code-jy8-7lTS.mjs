@@ -1,9 +1,10 @@
 import { j as jsxRuntimeExports } from "../_libs/react.mjs";
 import { L as Link } from "../_libs/tanstack__react-router.mjs";
-import { b as useQuery } from "../_libs/tanstack__react-query.mjs";
-import { R as Route$1, u as useServerFn, a as listMatches, l as listTeams } from "./router-CAxrt4u7.mjs";
-import { M as MATCHES, T as TEAMS, g as getTeam, f as flagUrl } from "./worldcup-data-DNtykFWW.mjs";
-import { M as MatchCard } from "./MatchCard-Cz3tefhF.mjs";
+import { u as useQuery } from "../_libs/tanstack__react-query.mjs";
+import { u as useServerFn } from "./useServerFn-DL2oePlL.mjs";
+import { M as MATCHES, T as TEAMS, g as getTeam, f as flagUrl } from "./worldcup-data-CJq_BX3J.mjs";
+import { R as Route$1, a as listMatches, l as listTeams } from "./router-mYYr7CR_.mjs";
+import { M as MatchCard } from "./MatchCard-CnyEo4MH.mjs";
 import "./index.mjs";
 import "../_libs/seroval.mjs";
 import "../_libs/tanstack__router-core.mjs";

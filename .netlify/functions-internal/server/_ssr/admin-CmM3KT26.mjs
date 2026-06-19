@@ -1,12 +1,14 @@
 import { r as reactExports, j as jsxRuntimeExports } from "../_libs/react.mjs";
-import { u as useRouter } from "../_libs/tanstack__react-router.mjs";
-import { u as useQueryClient, b as useQuery, a as useMutation } from "../_libs/tanstack__react-query.mjs";
-import { b as useAdminSession, u as useServerFn, g as getMongoStatus, c as createSsrRpc } from "./router-CAxrt4u7.mjs";
-import { u as useChannels, a as useChannelMutations, p as parseCsv } from "./channels-store-Du0PiS64.mjs";
-import { A as ALL_GROUPS, F as FALLBACK_LOGO } from "./worldcup-data-DNtykFWW.mjs";
+import { a as useQueryClient, u as useQuery, b as useMutation } from "../_libs/tanstack__react-query.mjs";
+import { u as useServerFn } from "./useServerFn-DL2oePlL.mjs";
+import { u as useChannels, a as useChannelMutations, p as parseCsv } from "./channels-store-Bj7lOobw.mjs";
+import { A as ALL_GROUPS, F as FALLBACK_LOGO } from "./worldcup-data-CJq_BX3J.mjs";
+import { c as createSsrRpc, g as getMongoStatus } from "./router-mYYr7CR_.mjs";
 import { c as createServerFn } from "./index.mjs";
 import "../_libs/seroval.mjs";
-import { U as Upload, q as RotateCcw, n as Search, X, r as GripVertical, o as Star, A as ArrowUp, s as ArrowDown, t as Trash2, T as Tv, b as LoaderCircle, D as Database, u as ShieldAlert, v as Plus, d as ChevronDown, i as Check, w as Pencil } from "../_libs/lucide-react.mjs";
+import { U as Upload, n as RotateCcw, k as Search, X, o as GripVertical, l as Star, A as ArrowUp, p as ArrowDown, q as Trash2, T as Tv, r as LoaderCircle, D as Database, s as ShieldAlert, t as Plus, b as ChevronDown, f as Check, u as Pencil } from "../_libs/lucide-react.mjs";
+import "../_libs/tanstack__query-core.mjs";
+import "../_libs/tanstack__react-router.mjs";
 import "../_libs/tanstack__router-core.mjs";
 import "../_libs/tanstack__history.mjs";
 import "../_libs/cookie-es.mjs";
@@ -19,7 +21,6 @@ import "crypto";
 import "async_hooks";
 import "stream";
 import "../_libs/isbot.mjs";
-import "../_libs/tanstack__query-core.mjs";
 import "../_libs/date-fns.mjs";
 import "../_libs/zod.mjs";
 import "node:async_hooks";
@@ -30,41 +31,25 @@ const seedIfEmpty = createServerFn({
   method: "POST"
 }).handler(createSsrRpc("0f0c0925c0faa0ca4f8965e7dd11a0bfbf21172124df463dc7fe074f12705c5d"));
 function AdminPage() {
-  const router = useRouter();
   const {
     channels,
     isLoading,
     refetch
   } = useChannels();
   const mutations = useChannelMutations();
-  const {
-    admin,
-    isLoading: authLoading
-  } = useAdminSession();
   const statusFn = useServerFn(getMongoStatus);
   const seedFn = useServerFn(seedIfEmpty);
   const qc = useQueryClient();
-  const [authed, setAuthed] = reactExports.useState(false);
-  const [q, setQ] = reactExports.useState("");
-  const [groupFilter, setGroupFilter] = reactExports.useState("All");
-  const [sortKey, setSortKey] = reactExports.useState("order");
-  const [sortAsc, setSortAsc] = reactExports.useState(true);
+  const [q, setQ] = useState("");
+  const [groupFilter, setGroupFilter] = useState("All");
+  const [sortKey, setSortKey] = useState("order");
+  const [sortAsc, setSortAsc] = useState(true);
   const mongoQ = useQuery({
     queryKey: ["mongo", "status"],
     queryFn: () => statusFn(),
     staleTime: 3e4,
     retry: false
   });
-  reactExports.useEffect(() => {
-    if (authLoading) return;
-    if (!admin) {
-      router.navigate({
-        to: "/"
-      });
-      return;
-    }
-    setAuthed(true);
-  }, [admin, authLoading, router]);
   const seedMut = useMutation({
     mutationFn: () => seedFn(),
     onSuccess: async (res) => {
@@ -91,7 +76,6 @@ function AdminPage() {
     else list.sort((a, b) => ((a.order ?? 0) - (b.order ?? 0)) * (sortAsc ? 1 : -1));
     return list;
   }, [channels, q, groupFilter, sortKey, sortAsc]);
-  if (!authed) return null;
   const totalFeatured = channels.filter((c) => c.featured).length;
   const moveInMaster = async (id, dir) => {
     const idx = channels.findIndex((x) => x.id === id);
@@ -308,8 +292,8 @@ function AddChannelForm({
   onAdd,
   disabled
 }) {
-  const [open, setOpen] = reactExports.useState(false);
-  const [form, setForm] = reactExports.useState({
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({
     name: "",
     url: "",
     logo: "",
@@ -382,9 +366,9 @@ function EditChannelModal({
   channel,
   onSave
 }) {
-  const [open, setOpen] = reactExports.useState(false);
-  const [form, setForm] = reactExports.useState(channel);
-  reactExports.useEffect(() => setForm(channel), [channel]);
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState(channel);
+  useEffect(() => setForm(channel), [channel]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setOpen(true), title: "Edit", className: "rounded p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pencil, { className: "h-3.5 w-3.5" }) }),
     open && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md animate-fade-up", onClick: () => setOpen(false), children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl", onClick: (e) => e.stopPropagation(), children: [

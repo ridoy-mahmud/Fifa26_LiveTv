@@ -1,5 +1,5 @@
 import { j as jsxRuntimeExports } from "../_libs/react.mjs";
-import { I as Info, c as Globe, T as Tv } from "../_libs/lucide-react.mjs";
+import { I as Info, a as Globe, T as Tv } from "../_libs/lucide-react.mjs";
 const broadcasters = [{
   region: "Bangladesh",
   names: ["T Sports", "Bangladesh Television (BTV)"],
