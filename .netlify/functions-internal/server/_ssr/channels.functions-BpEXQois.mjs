@@ -1,6 +1,6 @@
 import { c as createServerRpc } from "./createServerRpc-wV0Vk4NU.mjs";
 import { c as createServerFn } from "./index.mjs";
-import { A as ALL_GROUPS, M as MATCHES, T as TEAMS } from "./worldcup-data-CM7yYn8t.mjs";
+import { A as ALL_GROUPS, M as MATCHES, T as TEAMS } from "./worldcup-data-DNtykFWW.mjs";
 import { g as getMongoClient, a as getMongoDbName, b as getDb } from "./mongo.server-Q4wv6z-G.mjs";
 import "../_libs/seroval.mjs";
 import "../_libs/react.mjs";

@@ -1,13 +1,13 @@
 import { r as reactExports, j as jsxRuntimeExports } from "../_libs/react.mjs";
 import { H as Hls } from "../_libs/hls.js.mjs";
-import { F as FALLBACK_LOGO } from "./worldcup-data-CM7yYn8t.mjs";
-import { u as useChannels } from "./channels-store-BfEVNsUx.mjs";
+import { F as FALLBACK_LOGO } from "./worldcup-data-DNtykFWW.mjs";
+import { u as useChannels } from "./channels-store-Du0PiS64.mjs";
 import "./index.mjs";
 import "../_libs/seroval.mjs";
 import { W as Wifi, R as Radio, d as ChevronDown, X, e as Rewind, P as Pause, f as Play, F as FastForward, V as VolumeX, g as Volume2, h as Settings, i as Check, j as PictureInPicture2, M as Minimize2, k as Maximize2, l as TriangleAlert, m as RefreshCw, n as Search, o as Star, p as TvMinimal } from "../_libs/lucide-react.mjs";
 import "../_libs/tanstack__react-query.mjs";
 import "../_libs/tanstack__query-core.mjs";
-import "./router-C62mR_UY.mjs";
+import "./router-CAxrt4u7.mjs";
 import "../_libs/tanstack__react-router.mjs";
 import "../_libs/tanstack__router-core.mjs";
 import "../_libs/tanstack__history.mjs";

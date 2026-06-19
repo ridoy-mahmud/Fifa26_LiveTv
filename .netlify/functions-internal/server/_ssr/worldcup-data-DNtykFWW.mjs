@@ -18,6 +18,11 @@ const _raw = [
   // ── beIN SPORTS ────────────────────────────────────────────────────────
   { name: "beIN Sports", group: "Sports", featured: true, logo: "https://vignette.wikia.nocookie.net/logopedia/images/9/94/BE_IN_SPORT_1_HD_2013.jpg", url: "https://bein-esp-xumo.amagi.tv/playlistR1080p.m3u8" },
   { name: "beIN Sports 1", group: "Sports", featured: true, logo: "https://api.thextribune.com/files/BeIN_Sports_1_1781028191206_2026f1108f3141a1.webp", url: "https://andro.226503.xyz/checklist/androstreamlivebs1.m3u8" },
+  { name: "Go Live HD", group: "Sports", featured: true, logo: "https://i.ibb.co.com/7tsYPLS8/Go-Live.png", url: "https://d1211whpimeups.cloudfront.net/smil:rtbgo/chunklist_b4096000_slENG.m3u8" },
+  { name: "Bein sports 2 Max", group: "Sports", featured: true, logo: "https://i.ibb.co.com/wF0f7Y3B/Bein-Sports-2-Max.png", url: "https://cp11.adabmedia.com/hls2/sport.m3u8" },
+  { name: "Telemundo", group: "Football", featured: true, logo: "https://i.ibb.co.com/JWTsyM8Q/Telemundo.png", url: "https://daffodil.thelistener.pk/tele.m3u8" },
+  { name: "Somoy TV HD", group: "Bangladesh", featured: true, logo: "https://i.ibb.co.com/hFXKPxCv/Somoy-TV.png", url: "https://live.thebosstv.com:30443/dwlive/Somoy-TV/chunks.m3u8" },
+  { name: "Z Bangla sonar SD", group: "Entertainment", featured: true, logo: "https://i.ibb.co.com/6c1qKVNs/Z-Bangla-Sonar.png", url: "https://d1g8wgjurz8via.cloudfront.net/bpk-tv/ColorsHD/default/Zeebanglahd.m3u8" },
   // 27.124.71.27 BDIX replaced with andro.226503.xyz
   { name: "beIN Sports 1 (BDIX)", group: "Sports", logo: "https://imglink.cc/cdn/kIiut6WBq0.jpg", url: "https://andro.226503.xyz/checklist/androstreamlivebs1.m3u8" },
   // ua.online24.pm Serbia stream removed (no routable HTTPS alternative)

@@ -4,7 +4,7 @@ import { c as createRouter, a as createRootRouteWithContext, u as useRouter, L a
 import { S as notFound, m as isRedirect } from "../_libs/tanstack__router-core.mjs";
 import { r as reactExports, j as jsxRuntimeExports } from "../_libs/react.mjs";
 import { c as createServerFn, T as TSS_SERVER_FUNCTION, g as getServerFnById } from "./index.mjs";
-import { g as getTeam, T as TEAMS, M as MATCHES, A as ALL_GROUPS } from "./worldcup-data-CM7yYn8t.mjs";
+import { g as getTeam, T as TEAMS, M as MATCHES, A as ALL_GROUPS } from "./worldcup-data-DNtykFWW.mjs";
 import { f as format } from "../_libs/date-fns.mjs";
 import { W as Wifi, G as Github, L as LayoutDashboard, a as LogOut, S as ShieldCheck, X, b as LoaderCircle } from "../_libs/lucide-react.mjs";
 import { o as objectType, s as stringType, n as numberType, b as booleanType, e as enumType, a as arrayType } from "../_libs/zod.mjs";
@@ -543,7 +543,7 @@ const Route$9 = createFileRoute("/watch")({
   }),
   component: lazyRouteComponent($$splitComponentImporter$8, "component")
 });
-const $$splitComponentImporter$7 = () => import("./teams-D1iYACW0.mjs");
+const $$splitComponentImporter$7 = () => import("./teams-_x1g63zh.mjs");
 const Route$8 = createFileRoute("/teams")({
   head: () => ({
     meta: [{
@@ -573,7 +573,7 @@ const Route$7 = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
       GET: async () => {
-        const { MATCHES: MATCHES2, TEAMS: TEAMS2 } = await import("./worldcup-data-CM7yYn8t.mjs").then((n) => n.w);
+        const { MATCHES: MATCHES2, TEAMS: TEAMS2 } = await import("./worldcup-data-DNtykFWW.mjs").then((n) => n.w);
         const entries = [
           { path: "/", changefreq: "daily", priority: "1.0" },
           { path: "/schedule", changefreq: "daily", priority: "0.9" },
@@ -605,7 +605,7 @@ const Route$7 = createFileRoute("/sitemap.xml")({
     }
   }
 });
-const $$splitComponentImporter$6 = () => import("./schedule-C-pCG9mH.mjs");
+const $$splitComponentImporter$6 = () => import("./schedule-D8_NDfIv.mjs");
 const Route$6 = createFileRoute("/schedule")({
   head: () => ({
     meta: [{
@@ -630,7 +630,7 @@ const Route$6 = createFileRoute("/schedule")({
   }),
   component: lazyRouteComponent($$splitComponentImporter$6, "component")
 });
-const $$splitComponentImporter$5 = () => import("./live-Oz35CgyU.mjs");
+const $$splitComponentImporter$5 = () => import("./live-djfqOTbH.mjs");
 const Route$5 = createFileRoute("/live")({
   head: () => ({
     meta: [{
@@ -649,7 +649,7 @@ const Route$5 = createFileRoute("/live")({
   }),
   component: lazyRouteComponent($$splitComponentImporter$5, "component")
 });
-const $$splitComponentImporter$4 = () => import("./groups-n1qh9STk.mjs");
+const $$splitComponentImporter$4 = () => import("./groups-CTo3G-zc.mjs");
 const Route$4 = createFileRoute("/groups")({
   head: () => ({
     meta: [{
@@ -674,7 +674,7 @@ const Route$4 = createFileRoute("/groups")({
   }),
   component: lazyRouteComponent($$splitComponentImporter$4, "component")
 });
-const $$splitComponentImporter$3 = () => import("./admin-BTRK5pap.mjs");
+const $$splitComponentImporter$3 = () => import("./admin-Bh3_dI2N.mjs");
 const Route$3 = createFileRoute("/admin")({
   head: () => ({
     meta: [{
@@ -686,7 +686,7 @@ const Route$3 = createFileRoute("/admin")({
   }),
   component: lazyRouteComponent($$splitComponentImporter$3, "component")
 });
-const $$splitComponentImporter$2 = () => import("./index-B2DVRRCl.mjs");
+const $$splitComponentImporter$2 = () => import("./index-Chrf89A4.mjs");
 const Route$2 = createFileRoute("/")({
   head: () => ({
     meta: [{
@@ -713,7 +713,7 @@ const Route$2 = createFileRoute("/")({
 });
 const $$splitErrorComponentImporter$1 = () => import("./teams._code-Blkv86Xf.mjs");
 const $$splitNotFoundComponentImporter$1 = () => import("./teams._code-CbXdr24X.mjs");
-const $$splitComponentImporter$1 = () => import("./teams._code-OgJ4g19x.mjs");
+const $$splitComponentImporter$1 = () => import("./teams._code-Bpvg_5Q2.mjs");
 const Route$1 = createFileRoute("/teams/$code")({
   loader: ({
     params
@@ -836,7 +836,7 @@ const getMongoStatus = createServerFn({
 }).handler(createSsrRpc("6a5d1c579e0c5f653528260f2a8441d75ad8eec1dbaf5715f3caedb6ef47078c"));
 const $$splitErrorComponentImporter = () => import("./matches._id-CkEgbDnQ.mjs");
 const $$splitNotFoundComponentImporter = () => import("./matches._id-BgFvS8yN.mjs");
-const $$splitComponentImporter = () => import("./matches._id-19JJxDrX.mjs");
+const $$splitComponentImporter = () => import("./matches._id-CPDB_09-.mjs");
 const Route = createFileRoute("/matches/$id")({
   loader: async ({
     params

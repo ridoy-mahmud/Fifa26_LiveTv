@@ -1,7 +1,7 @@
 import { b as useQuery, u as useQueryClient, a as useMutation } from "../_libs/tanstack__react-query.mjs";
-import { u as useServerFn, d as listChannels, e as upsertChannel, p as patchChannel, t as toggleFeatured, f as deleteChannel, r as reorderChannels, h as replaceAllChannels, i as importChannels } from "./router-C62mR_UY.mjs";
+import { u as useServerFn, d as listChannels, e as upsertChannel, p as patchChannel, t as toggleFeatured, f as deleteChannel, r as reorderChannels, h as replaceAllChannels, i as importChannels } from "./router-CAxrt4u7.mjs";
 import { r as reactExports } from "../_libs/react.mjs";
-import { D as DEFAULT_CHANNELS } from "./worldcup-data-CM7yYn8t.mjs";
+import { D as DEFAULT_CHANNELS } from "./worldcup-data-DNtykFWW.mjs";
 const channelsQueryKey = ["channels"];
 function useChannels() {
   const fetch = useServerFn(listChannels);

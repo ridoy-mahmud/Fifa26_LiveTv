@@ -1,7 +1,7 @@
 import { c as createServerRpc } from "./createServerRpc-wV0Vk4NU.mjs";
 import { c as createServerFn } from "./index.mjs";
 import { c as getMongoUri, b as getDb } from "./mongo.server-Q4wv6z-G.mjs";
-import { D as DEFAULT_CHANNELS, T as TEAMS, M as MATCHES } from "./worldcup-data-CM7yYn8t.mjs";
+import { D as DEFAULT_CHANNELS, T as TEAMS, M as MATCHES } from "./worldcup-data-DNtykFWW.mjs";
 import "../_libs/seroval.mjs";
 import "../_libs/react.mjs";
 import "node:async_hooks";

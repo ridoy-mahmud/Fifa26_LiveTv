@@ -96,7 +96,7 @@ function getResponse() {
 }
 var HEADERS = { TSS_SHELL: "X-TSS_SHELL" };
 async function getStartManifest(matchedRoutes) {
-  const { tsrStartManifest } = await import("../_tanstack-start-manifest_v-QTcVm2Ro.mjs");
+  const { tsrStartManifest } = await import("../_tanstack-start-manifest_v-Cg1a0QVA.mjs");
   const startManifest = tsrStartManifest();
   let routes = startManifest.routes;
   routes[rootRouteId];
@@ -118,11 +118,11 @@ async function getStartManifest(matchedRoutes) {
 const manifest = {
   "044c5c43fb51f439091dec031369c9b2618383d2a6da4d4ffbafc6cd49769e10": {
     functionName: "reorderChannels_createServerFn_handler",
-    importer: () => import("./channels.functions-Bg9VReAj.mjs")
+    importer: () => import("./channels.functions-BpEXQois.mjs")
   },
   "0f0c0925c0faa0ca4f8965e7dd11a0bfbf21172124df463dc7fe074f12705c5d": {
     functionName: "seedIfEmpty_createServerFn_handler",
-    importer: () => import("./seed.functions-Wl2OcRAY.mjs")
+    importer: () => import("./seed.functions-6QFvUPN6.mjs")
   },
   "20a78c18b0630a37383f6b8ccf6985fcaa46b2b7e5c8768b05a94d463c1ca324": {
     functionName: "adminLogin_createServerFn_handler",
@@ -130,11 +130,11 @@ const manifest = {
   },
   "2e815e0d02eccf425172a4e87c131b25a0720e19cb4706bae13ebd6d21a5ed78": {
     functionName: "toggleFeatured_createServerFn_handler",
-    importer: () => import("./channels.functions-Bg9VReAj.mjs")
+    importer: () => import("./channels.functions-BpEXQois.mjs")
   },
   "44e3db047e42fd4696efb5a8651409a2b9c34e0bbb4006866523d2eb80d0a06c": {
     functionName: "patchChannel_createServerFn_handler",
-    importer: () => import("./channels.functions-Bg9VReAj.mjs")
+    importer: () => import("./channels.functions-BpEXQois.mjs")
   },
   "4557679850f5bc8eef8d2f67e1b26e8ea97f9dcabf61a11617b65e9ccf20d934": {
     functionName: "adminLogout_createServerFn_handler",
@@ -142,35 +142,35 @@ const manifest = {
   },
   "4f50a6fd1428ed49ce9a72f40ff4cd5948db4a5c46e768f8cf7ef21d8ca9ed1a": {
     functionName: "listMatches_createServerFn_handler",
-    importer: () => import("./channels.functions-Bg9VReAj.mjs")
+    importer: () => import("./channels.functions-BpEXQois.mjs")
   },
   "614a55c1a8ef8c1d548e6b6f99714d7ce9c0202eebbbf07b8f398eb1e4dce871": {
     functionName: "replaceAllChannels_createServerFn_handler",
-    importer: () => import("./channels.functions-Bg9VReAj.mjs")
+    importer: () => import("./channels.functions-BpEXQois.mjs")
   },
   "6a5d1c579e0c5f653528260f2a8441d75ad8eec1dbaf5715f3caedb6ef47078c": {
     functionName: "getMongoStatus_createServerFn_handler",
-    importer: () => import("./channels.functions-Bg9VReAj.mjs")
+    importer: () => import("./channels.functions-BpEXQois.mjs")
   },
   "86e14cfe6762e92d796d752b59cec0f253a5f9727f3283b4d72fee4cfef6edc1": {
     functionName: "importChannels_createServerFn_handler",
-    importer: () => import("./channels.functions-Bg9VReAj.mjs")
+    importer: () => import("./channels.functions-BpEXQois.mjs")
   },
   "885d71df7f59db4c5aad3feb4660cedbabb379054c28cb66f294a6c56f0961b2": {
     functionName: "deleteChannel_createServerFn_handler",
-    importer: () => import("./channels.functions-Bg9VReAj.mjs")
+    importer: () => import("./channels.functions-BpEXQois.mjs")
   },
   "a4d3d836b2ec5bb18595e71927da1043708e773f21a27e8c78ac3b045561cb92": {
     functionName: "listChannels_createServerFn_handler",
-    importer: () => import("./channels.functions-Bg9VReAj.mjs")
+    importer: () => import("./channels.functions-BpEXQois.mjs")
   },
   "a4f5f49fc2d6c87836a81659ac558896ffeec8946d9cd025ddee9808d2853953": {
     functionName: "getMatchById_createServerFn_handler",
-    importer: () => import("./channels.functions-Bg9VReAj.mjs")
+    importer: () => import("./channels.functions-BpEXQois.mjs")
   },
   "b64bc6ca3288aee8e0155452ab066f5313a726a471dcca2309979b41aad835d6": {
     functionName: "upsertChannel_createServerFn_handler",
-    importer: () => import("./channels.functions-Bg9VReAj.mjs")
+    importer: () => import("./channels.functions-BpEXQois.mjs")
   },
   "dd94d4a392bb45b7f791f816ec920c3a47ac3d254a29a721a9bee7d71f1abfd7": {
     functionName: "adminMe_createServerFn_handler",
@@ -178,7 +178,7 @@ const manifest = {
   },
   "ed2f19cf3696be8f208607eda59418183a49b316debb90f42feda95f734ad234": {
     functionName: "listTeams_createServerFn_handler",
-    importer: () => import("./channels.functions-Bg9VReAj.mjs")
+    importer: () => import("./channels.functions-BpEXQois.mjs")
   }
 };
 async function getServerFnById(id, access) {
@@ -1418,7 +1418,7 @@ var getBaseManifest = getProdBaseManifest;
 var createEarlyHintsForRequest = createEarlyHintsCollector;
 async function loadEntries() {
   const [routerEntry, startEntry, pluginAdapters] = await Promise.all([
-    import("./router-C62mR_UY.mjs").then((n) => n.k),
+    import("./router-CAxrt4u7.mjs").then((n) => n.k),
     import("./start-9w6rpjgs.mjs"),
     import("./empty-plugin-adapters-BFgPZ6_d.mjs")
   ]);

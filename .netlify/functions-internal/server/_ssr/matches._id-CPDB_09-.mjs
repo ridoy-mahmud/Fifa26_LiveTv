@@ -1,7 +1,7 @@
 import { j as jsxRuntimeExports } from "../_libs/react.mjs";
 import { L as Link } from "../_libs/tanstack__react-router.mjs";
-import { g as getTeam, f as flagUrl } from "./worldcup-data-CM7yYn8t.mjs";
-import { j as Route } from "./router-C62mR_UY.mjs";
+import { g as getTeam, f as flagUrl } from "./worldcup-data-DNtykFWW.mjs";
+import { j as Route } from "./router-CAxrt4u7.mjs";
 import "./index.mjs";
 import "../_libs/seroval.mjs";
 import { H as Hash, y as MapPin, x as Calendar } from "../_libs/lucide-react.mjs";
