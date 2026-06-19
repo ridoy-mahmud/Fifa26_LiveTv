@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getCookie, setCookie, deleteCookie } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 /**
@@ -31,12 +32,42 @@ function timingSafeEqual(a: string, b: string) {
   return r === 0;
 }
 
+// Vite only injects env vars prefixed with VITE_ into the runtime, so
+// ADMIN_EMAIL / ADMIN_PASSWORD from `.env` are NOT visible to server code
+// unless we also check the VITE_ variants. We accept both: the VITE_
+// prefixes are populated by Vite in dev/build; the unprefixed versions are
+// populated by the production runtime (Vercel/Cloudflare) via process.env.
+// Order: VITE_* → process.env → hard-coded fallback.
 function adminEmail(): string {
-  return (process.env.ADMIN_EMAIL || "mahamulhasan38@gmail.com").toLowerCase();
+  const fromVite = (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_ADMIN_EMAIL;
+  const fromRuntime = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.ADMIN_EMAIL;
+  return (fromVite || fromRuntime || "mahamulhasan38@gmail.com").toLowerCase();
 }
 
 function adminPassword(): string {
-  return process.env.ADMIN_PASSWORD || "Ridoy007@#";
+  const fromVite = (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_ADMIN_PASSWORD;
+  const fromRuntime = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.ADMIN_PASSWORD;
+  return fromVite || fromRuntime || "Ridoy007@#";
+}
+
+// One-time diagnostic so you can see exactly which env values the server
+// is reading. Logged on first login attempt — only visible server-side.
+// Gated to dev mode to keep production logs clean.
+const isDev = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.NODE_ENV !== "production";
+let _authDebugLogged = false;
+function logAuthDebug() {
+  if (!isDev || _authDebugLogged) return;
+  _authDebugLogged = true;
+  const src = {
+    viteEmail: !!(import.meta as { env?: Record<string, unknown> }).env?.VITE_ADMIN_EMAIL,
+    vitePassword: !!(import.meta as { env?: Record<string, unknown> }).env?.VITE_ADMIN_PASSWORD,
+    procEmail: !!(globalThis as { process?: { env?: Record<string, unknown> } }).process?.env?.ADMIN_EMAIL,
+    procPassword: !!(globalThis as { process?: { env?: Record<string, unknown> } }).process?.env?.ADMIN_PASSWORD,
+  };
+  // eslint-disable-next-line no-console
+  console.log("[admin-auth] env sources:", JSON.stringify(src));
+  // eslint-disable-next-line no-console
+  console.log("[admin-auth] active email:", adminEmail(), "pw length:", adminPassword().length);
 }
 
 function generateToken(): string {
@@ -48,84 +79,58 @@ function generateToken(): string {
   );
 }
 
-function parseCookies(header: string | null | undefined): Record<string, string> {
-  const out: Record<string, string> = {};
-  if (!header) return out;
-  for (const part of header.split(";")) {
-    const idx = part.indexOf("=");
-    if (idx < 0) continue;
-    const k = part.slice(0, idx).trim();
-    const v = part.slice(idx + 1).trim();
-    if (k) out[k] = decodeURIComponent(v);
-  }
-  return out;
-}
-
 export const adminLogin = createServerFn({ method: "POST" })
   .validator((d) => LoginInput.parse(d))
-  .handler(async ({ data, request }) => {
-    const emailOk = timingSafeEqual(data.email.toLowerCase(), adminEmail());
-    const pwOk = timingSafeEqual(data.password, adminPassword());
+  .handler(async ({ data }) => {
+    logAuthDebug();
+    const cfgEmail = adminEmail();
+    const cfgPw = adminPassword();
+    const emailOk = timingSafeEqual(data.email.toLowerCase(), cfgEmail);
+    const pwOk = timingSafeEqual(data.password, cfgPw);
     if (!emailOk || !pwOk) {
+      if (isDev) {
+        // Helpful server-side log for debugging — the client just gets a
+        // generic message so we don't leak which field is wrong.
+        // eslint-disable-next-line no-console
+        console.log(
+          "[admin-auth] login failed for:",
+          data.email,
+          "expected email:",
+          cfgEmail,
+          "pwLen:",
+          cfgPw.length,
+          "inputPwLen:",
+          data.password.length,
+        );
+      }
       throw new Error("Invalid credentials");
     }
     const token = generateToken();
-    const cookie = [
-      `${COOKIE_NAME}=${encodeURIComponent(token)}`,
-      "Path=/",
-      `Max-Age=${COOKIE_MAX_AGE}`,
-      "HttpOnly",
-      "SameSite=Lax",
-    ].join("; ");
-    // Attach Set-Cookie via response headers on the current request so the
-    // browser stores it and subsequent adminMe() calls succeed.
-    try {
-      // h3 / @tanstack/react-start attach a helpers object; fall back to a
-      // response header on the request if needed.
-      const resHeaders = (request as unknown as { headers?: Headers }).headers;
-      if (resHeaders && typeof (resHeaders as Headers).append === "function") {
-        (resHeaders as Headers).append("Set-Cookie", cookie);
-      }
-    } catch {
-      // non-fatal: cookie just won't persist across requests in this env
-    }
+    // setCookie() writes to the response Set-Cookie header so the browser
+    // stores the value and subsequent adminMe() calls succeed.
+    setCookie(COOKIE_NAME, token, {
+      path: "/",
+      maxAge: COOKIE_MAX_AGE,
+      httpOnly: true,
+      sameSite: "lax",
+    });
     return { token };
   });
 
-export const adminMe = createServerFn({ method: "GET" }).handler(
-  async ({ request }) => {
-    const cookieHeader =
-      (request as unknown as { headers?: Headers }).headers?.get?.("cookie") ??
-      null;
-    const cookies = parseCookies(cookieHeader);
-    const token = cookies[COOKIE_NAME];
-    if (!token || !token.startsWith("adm_")) {
-      return { admin: null };
-    }
-    // We don't keep a server-side token store — possession of the cookie is
-    // sufficient. Return the configured admin email so the UI can render the
-    // signed-in state.
-    return { admin: { email: adminEmail() } };
-  },
-);
+export const adminMe = createServerFn({ method: "GET" }).handler(async () => {
+  const token = getCookie(COOKIE_NAME);
+  if (!token || !token.startsWith("adm_")) {
+    return { admin: null };
+  }
+  // We don't keep a server-side token store — possession of the cookie is
+  // sufficient. Return the configured admin email so the UI can render the
+  // signed-in state.
+  return { admin: { email: adminEmail() } };
+});
 
 export const adminLogout = createServerFn({ method: "POST" }).handler(
-  async ({ request }) => {
-    const cookie = [
-      `${COOKIE_NAME}=`,
-      "Path=/",
-      "Max-Age=0",
-      "HttpOnly",
-      "SameSite=Lax",
-    ].join("; ");
-    try {
-      const resHeaders = (request as unknown as { headers?: Headers }).headers;
-      if (resHeaders && typeof (resHeaders as Headers).append === "function") {
-        (resHeaders as Headers).append("Set-Cookie", cookie);
-      }
-    } catch {
-      // non-fatal
-    }
+  async () => {
+    deleteCookie(COOKIE_NAME, { path: "/" });
     return { ok: true };
   },
 );

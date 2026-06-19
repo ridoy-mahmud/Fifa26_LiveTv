@@ -1,8 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Calendar, Radio, Zap, Globe2 } from "lucide-react";
 import heroImg from "@/assets/hero-stadium.jpg";
 import { MatchCard } from "@/components/match/MatchCard";
 import { upcomingMatches } from "@/lib/worldcup-data";
+import { listMatches } from "@/lib/api/channels.functions";
 
 const LOGO = "https://i.ibb.co.com/xqDjvtSg/fifa-world-cup-2026-logo-white.png";
 
@@ -28,7 +31,16 @@ const stats = [
 ];
 
 function HomePage() {
-  const upcoming = upcomingMatches(6);
+  const matchesFn = useServerFn(listMatches);
+  const { data: matches = [] } = useQuery({
+    queryKey: ["matches", "home"],
+    queryFn: () => matchesFn(),
+    staleTime: 30_000,
+  });
+  const upcoming = upcomingMatches(
+    6,
+    matches.length > 0 ? matches : undefined,
+  );
 
   return (
     <div>

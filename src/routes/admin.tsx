@@ -92,19 +92,19 @@ function AdminPage() {
     if (j < 0 || j >= channels.length) return;
     const next = [...channels];
     [next[idx], next[j]] = [next[j], next[idx]];
-    await mutations.reorder(next.map((c) => c.id));
+    await mutations.reorder.mutate(next.map((c) => c.id));
   };
 
   const onFile = async (file: File) => {
     const text = await file.text();
     if (file.name.endsWith(".csv")) {
-      mutations.importMany(parseCsv(text));
+      mutations.importMany.mutate(parseCsv(text));
     } else {
       try {
         const json = JSON.parse(text);
         const arr = Array.isArray(json) ? json : json.channels ?? json.streams;
         if (!Array.isArray(arr)) throw new Error("Bad JSON");
-        mutations.importMany(
+        mutations.importMany.mutate(
           arr.map((r: Record<string, unknown>) => ({
             name: (r.name as string) ?? (r.channel_name as string) ?? "",
             group: (r.group as ChannelGroup) ?? "Sports",
@@ -154,7 +154,7 @@ function AdminPage() {
               onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.currentTarget.value = ""; }} />
           </label>
           <button
-            onClick={() => { if (confirm("Reset all channels to defaults?")) mutations.reset(); }}
+            onClick={() => { if (confirm("Reset all channels to defaults?")) mutations.reset.mutate(); }}
             className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold transition hover:bg-secondary"
           >
             <RotateCcw className="h-4 w-4" /> Reset
@@ -177,7 +177,7 @@ function AdminPage() {
       <div className="mt-4">
         <AddChannelForm
           onAdd={async (c) => {
-            try { await mutations.upsert(c); }
+            try { await mutations.upsert.mutateAsync(c); }
             catch (e) { alert(e instanceof Error ? e.message : "Add failed"); }
           }}
           disabled={mutations.upsert.isPending}
@@ -213,8 +213,8 @@ function AdminPage() {
             return (
               <button key={g} onClick={() => setGroupFilter(g as typeof groupFilter)}
                 className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold transition ${groupFilter === g
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"}`}
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"}`}
               >
                 {g} <span className="opacity-70">({count})</span>
               </button>
@@ -271,12 +271,12 @@ function AdminPage() {
                       <span className="block truncate text-[11px] text-muted-foreground font-mono" title={c.url}>{c.url}</span>
                     </td>
                     <td className="px-3 py-2 text-center">
-                      <button onClick={() => mutations.toggleFeatured(c.id)}
+                      <button onClick={() => mutations.toggleFeatured.mutate(c.id)}
                         title={c.featured ? "Remove from Top 10" : "Add to Top 10"}
                         disabled={mutations.toggleFeatured.isPending}
                         className={`inline-flex h-7 w-7 items-center justify-center rounded-full transition ${c.featured
-                            ? "bg-gold/20 text-gold hover:bg-gold/30"
-                            : "bg-secondary text-muted-foreground hover:bg-secondary/80 hover:text-gold"}`}>
+                          ? "bg-gold/20 text-gold hover:bg-gold/30"
+                          : "bg-secondary text-muted-foreground hover:bg-secondary/80 hover:text-gold"}`}>
                         <Star className={`h-3.5 w-3.5 ${c.featured ? "fill-gold" : ""}`} />
                       </button>
                     </td>
@@ -291,11 +291,11 @@ function AdminPage() {
                           <ArrowDown className="h-3.5 w-3.5" />
                         </button>
                         <EditChannelModal channel={c} onSave={async (next) => {
-                          try { await mutations.upsert(next); }
+                          try { await mutations.upsert.mutateAsync(next); }
                           catch (e) { alert(e instanceof Error ? e.message : "Save failed"); }
                         }} />
                         <button
-                          onClick={() => { if (confirm(`Delete "${c.name}"?`)) mutations.remove(c.id); }}
+                          onClick={() => { if (confirm(`Delete "${c.name}"?`)) mutations.remove.mutate(c.id); }}
                           disabled={mutations.remove.isPending}
                           title="Delete"
                           className="rounded p-1.5 text-muted-foreground hover:bg-live/10 hover:text-live">
@@ -333,10 +333,10 @@ function DbStatusBar({
   const empty = connected && channelCount === 0;
   return (
     <div className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2 text-xs ${connected
-        ? empty
-          ? "border-gold/40 bg-gold/10"
-          : "border-emerald-500/40 bg-emerald-500/10"
-        : "border-live/40 bg-live/10"}`}>
+      ? empty
+        ? "border-gold/40 bg-gold/10"
+        : "border-emerald-500/40 bg-emerald-500/10"
+      : "border-live/40 bg-live/10"}`}>
       <div className="flex items-center gap-2">
         {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> :
           connected ? <Database className="h-3.5 w-3.5 text-emerald-400" /> : <ShieldAlert className="h-3.5 w-3.5 text-live" />}

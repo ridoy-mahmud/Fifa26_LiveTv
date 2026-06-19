@@ -1,5 +1,8 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { TEAMS, MATCHES, getTeam, flagUrl } from "@/lib/worldcup-data";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { TEAMS, MATCHES, getTeam, flagUrl, type Match, type Team } from "@/lib/worldcup-data";
+import { listMatches, listTeams } from "@/lib/api/channels.functions";
 import { MatchCard } from "@/components/match/MatchCard";
 
 export const Route = createFileRoute("/teams/$code")({
@@ -37,9 +40,24 @@ export const Route = createFileRoute("/teams/$code")({
 });
 
 function TeamPage() {
-  const { team } = Route.useLoaderData();
-  const matches = MATCHES.filter((m) => m.homeCode === team.code || m.awayCode === team.code);
-  const groupmates = TEAMS.filter((t) => t.group === team.group && t.code !== team.code);
+  const { team: loaderTeam } = Route.useLoaderData();
+  const matchesFn = useServerFn(listMatches);
+  const teamsFn = useServerFn(listTeams);
+  const { data: dbMatches } = useQuery({
+    queryKey: ["matches", "team", loaderTeam.code],
+    queryFn: () => matchesFn(),
+    staleTime: 30_000,
+  });
+  const { data: dbTeams } = useQuery({
+    queryKey: ["teams", "team", loaderTeam.code],
+    queryFn: () => teamsFn(),
+    staleTime: 30_000,
+  });
+  const allMatches = (dbMatches && dbMatches.length > 0 ? dbMatches : MATCHES) as Match[];
+  const allTeams = (dbTeams && dbTeams.length > 0 ? dbTeams : TEAMS) as Team[];
+  const team = getTeam(loaderTeam.code, allTeams);
+  const matches = allMatches.filter((m) => m.homeCode === team.code || m.awayCode === team.code);
+  const groupmates = allTeams.filter((t) => t.group === team.group && t.code !== team.code);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">

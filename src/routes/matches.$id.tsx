@@ -1,11 +1,14 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { getMatch, getTeam, flagUrl, type Match, type MatchEvent } from "@/lib/worldcup-data";
+import { getMatchById } from "@/lib/api/channels.functions";
 import { format } from "date-fns";
 import { MapPin, Calendar, Hash } from "lucide-react";
 
 export const Route = createFileRoute("/matches/$id")({
-  loader: ({ params }) => {
-    const match = getMatch(params.id);
+  loader: async ({ params }) => {
+    // Server-side lookup through the canonical MongoDB-backed source,
+    // falling back to the bundled defaults if the DB has no record.
+    const { match } = await getMatchById({ data: { id: params.id } });
     if (!match) throw notFound();
     return { match };
   },

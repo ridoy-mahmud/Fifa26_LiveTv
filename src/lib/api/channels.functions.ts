@@ -1,7 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { MongoClient, type Db, type Collection } from "mongodb";
-import { DEFAULT_CHANNELS, type Channel, type ChannelGroup } from "@/lib/channels-data";
+import type { Db, Collection } from "mongodb";
+import { ALL_GROUPS, DEFAULT_CHANNELS, type Channel, type ChannelGroup } from "@/lib/channels-data";
+import { MATCHES, TEAMS, type Match, type Team } from "@/lib/worldcup-data";
+import { getDb, getMongoClient } from "@/lib/mongo.server";
 
 /**
  * Server-side channel storage backed by MongoDB.
@@ -15,25 +17,32 @@ import { DEFAULT_CHANNELS, type Channel, type ChannelGroup } from "@/lib/channel
 
 const DB_NAME = process.env.MONGODB_DB || "wc2026";
 const COL_CHANNELS = "channels";
+const COL_MATCHES = "matches";
+const COL_TEAMS = "teams";
 
+// Input schema for channel writes. Defaults are applied at parse time so the
+// output matches the Channel type (logo: string, featured: boolean).
+// We don't use `satisfies z.ZodType<Channel>` because optional Zod fields
+// with `.default()` have input type `T | undefined` while Channel expects
+// concrete types — the runtime output is fine.
 const ChannelInput = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  group: z.string().min(1),
+  group: z.enum(ALL_GROUPS as [ChannelGroup, ...ChannelGroup[]]),
   logo: z.string().optional().default(""),
   url: z.string().min(1),
-  fallbackUrl: z.string().nullable().optional().default(null),
+  fallbackUrl: z.string().optional(),
   featured: z.boolean().optional().default(false),
   order: z.number().int().optional(),
-}) satisfies z.ZodType<Channel>;
+});
 
 const ChannelPatch = z.object({
   id: z.string().min(1),
   name: z.string().min(1).optional(),
-  group: z.string().min(1).optional(),
+  group: z.enum(ALL_GROUPS as [ChannelGroup, ...ChannelGroup[]]).optional(),
   logo: z.string().optional(),
   url: z.string().min(1).optional(),
-  fallbackUrl: z.string().nullable().optional(),
+  fallbackUrl: z.string().optional(),
   featured: z.boolean().optional(),
   order: z.number().int().optional(),
 });
@@ -46,60 +55,35 @@ const ImportInput = z.object({
   rows: z.array(
     z.object({
       name: z.string().min(1),
-      group: z.string().min(1),
+      group: z.enum(ALL_GROUPS as [ChannelGroup, ...ChannelGroup[]]),
       logo: z.string().optional().default(""),
       url: z.string().min(1),
-      fallbackUrl: z.string().nullable().optional().default(null),
+      fallbackUrl: z.string().optional(),
       featured: z.boolean().optional().default(false),
     }),
   ),
 });
 
-let _clientPromise: Promise<MongoClient> | null = null;
-function getClient(): Promise<MongoClient> {
-  if (!_clientPromise) {
-    const uri = process.env.MONGODB_URI;
-    if (!uri) throw new Error("MONGODB_URI is not configured");
-    _clientPromise = new MongoClient(uri, {
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5_000,
-    }).connect();
-  }
+let _clientPromise: Promise<Db> | null = null;
+async function getDbHandle(): Promise<Db> {
+  if (!_clientPromise) _clientPromise = getDb();
   return _clientPromise;
 }
-
 async function channelsCol(): Promise<Collection<Channel>> {
-  const c = await getClient();
-  return c.db(DB_NAME).collection<Channel>(COL_CHANNELS);
+  const db = await getDbHandle();
+  return db.collection<Channel>(COL_CHANNELS);
 }
-
-type MemStore = { map: Map<string, Channel>; seeded: boolean };
-const _mem: MemStore = { map: new Map(), seeded: false };
-function memSeed() {
-  if (_mem.seeded) return;
-  _mem.seeded = true;
-  for (const c of DEFAULT_CHANNELS) _mem.map.set(c.id, { ...c });
+async function matchesCol(): Promise<Collection<Match>> {
+  const db = await getDbHandle();
+  return db.collection<Match>(COL_MATCHES);
 }
-function memNextOrder(): number {
-  let max = 0;
-  for (const c of _mem.map.values()) {
-    if (typeof c.order === "number" && c.order > max) max = c.order;
-  }
-  return max + 1;
-}
-function memSnapshot(): Channel[] {
-  memSeed();
-  return Array.from(_mem.map.values()).sort(
-    (a, b) => (a.order ?? 0) - (b.order ?? 0),
-  );
-}
-function usingMemory() {
-  return !process.env.MONGODB_URI;
+async function teamsCol(): Promise<Collection<Team>> {
+  const db = await getDbHandle();
+  return db.collection<Team>(COL_TEAMS);
 }
 
 export const listChannels = createServerFn({ method: "GET" }).handler(
   async (): Promise<Channel[]> => {
-    if (usingMemory()) return memSnapshot();
     const col = await channelsCol();
     return col.find({}, { projection: { _id: 0 } }).sort({ order: 1 }).toArray();
   },
@@ -109,23 +93,23 @@ export const upsertChannel = createServerFn({ method: "POST" })
   .validator((d) => ChannelInput.parse(d))
   .handler(async ({ data }) => {
     const incoming = data as Channel;
-    if (usingMemory()) {
-      memSeed();
-      const existing = _mem.map.get(incoming.id);
-      const merged: Channel = {
-        ...incoming,
-        group: incoming.group as ChannelGroup,
-        order: existing?.order ?? incoming.order ?? memNextOrder(),
-      };
-      _mem.map.set(merged.id, merged);
-      return { ok: true, channel: merged };
-    }
     const col = await channelsCol();
     const existing = await col.findOne({ id: incoming.id });
+    
+    let newOrder = incoming.order;
+    if (newOrder === undefined) {
+      if (existing?.order !== undefined) {
+        newOrder = existing.order;
+      } else {
+        const last = await col.find({}, { projection: { order: 1 } }).sort({ order: -1 }).limit(1).toArray();
+        newOrder = (last[0]?.order ?? 0) + 1;
+      }
+    }
+
     const merged: Channel = {
       ...incoming,
       group: incoming.group as ChannelGroup,
-      order: existing?.order ?? incoming.order ?? memNextOrder(),
+      order: newOrder,
     };
     await col.replaceOne({ id: incoming.id }, merged, { upsert: true });
     return { ok: true, channel: merged };
@@ -134,26 +118,14 @@ export const upsertChannel = createServerFn({ method: "POST" })
 export const patchChannel = createServerFn({ method: "POST" })
   .validator((d) => ChannelPatch.parse(d))
   .handler(async ({ data }) => {
-    if (usingMemory()) {
-      memSeed();
-      const cur = _mem.map.get(data.id);
-      if (!cur) throw new Error(`Channel not found: ${data.id}`);
-      const next: Channel = {
-        ...cur,
-        ...data,
-        group: ((data.group as ChannelGroup | undefined) ?? cur.group) as ChannelGroup,
-        id: cur.id,
-      };
-      _mem.map.set(cur.id, next);
-      return { ok: true, channel: next };
-    }
     const col = await channelsCol();
     const cur = await col.findOne({ id: data.id });
     if (!cur) throw new Error(`Channel not found: ${data.id}`);
-    const { id: _ignore, ...rest } = data;
+    const { id: _ignore, fallbackUrl, ...rest } = data;
     const next: Channel = {
       ...cur,
       ...rest,
+      fallbackUrl: fallbackUrl ?? cur.fallbackUrl,
       group: ((data.group as ChannelGroup | undefined) ?? cur.group) as ChannelGroup,
     };
     await col.replaceOne({ id: data.id }, next);
@@ -163,14 +135,6 @@ export const patchChannel = createServerFn({ method: "POST" })
 export const toggleFeatured = createServerFn({ method: "POST" })
   .validator((d) => z.object({ id: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
-    if (usingMemory()) {
-      memSeed();
-      const cur = _mem.map.get(data.id);
-      if (!cur) throw new Error(`Channel not found: ${data.id}`);
-      cur.featured = !cur.featured;
-      _mem.map.set(data.id, cur);
-      return { ok: true, channel: cur };
-    }
     const col = await channelsCol();
     const cur = await col.findOne({ id: data.id });
     if (!cur) throw new Error(`Channel not found: ${data.id}`);
@@ -182,11 +146,6 @@ export const toggleFeatured = createServerFn({ method: "POST" })
 export const deleteChannel = createServerFn({ method: "POST" })
   .validator((d) => z.object({ id: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
-    if (usingMemory()) {
-      memSeed();
-      _mem.map.delete(data.id);
-      return { ok: true };
-    }
     const col = await channelsCol();
     await col.deleteOne({ id: data.id });
     return { ok: true };
@@ -195,17 +154,6 @@ export const deleteChannel = createServerFn({ method: "POST" })
 export const reorderChannels = createServerFn({ method: "POST" })
   .validator((d) => IdsInput.parse(d))
   .handler(async ({ data }) => {
-    if (usingMemory()) {
-      memSeed();
-      data.orderedIds.forEach((id, idx) => {
-        const cur = _mem.map.get(id);
-        if (cur) {
-          cur.order = idx;
-          _mem.map.set(id, cur);
-        }
-      });
-      return { ok: true };
-    }
     const col = await channelsCol();
     await Promise.all(
       data.orderedIds.map((id, idx) =>
@@ -218,15 +166,6 @@ export const reorderChannels = createServerFn({ method: "POST" })
 export const replaceAllChannels = createServerFn({ method: "POST" })
   .validator((d) => ReplaceAllInput.parse(d))
   .handler(async ({ data }) => {
-    if (usingMemory()) {
-      _mem.map.clear();
-      data.rows.forEach((c, idx) => {
-        const row = { ...c, order: c.order ?? idx } as Channel;
-        _mem.map.set(row.id, row);
-      });
-      _mem.seeded = true;
-      return { ok: true, count: _mem.map.size };
-    }
     const col = await channelsCol();
     await col.deleteMany({});
     const docs = data.rows.map((c, idx) => ({ ...c, order: c.order ?? idx }) as Channel);
@@ -237,30 +176,6 @@ export const replaceAllChannels = createServerFn({ method: "POST" })
 export const importChannels = createServerFn({ method: "POST" })
   .validator((d) => ImportInput.parse(d))
   .handler(async ({ data }) => {
-    if (usingMemory()) {
-      memSeed();
-      let added = 0;
-      let skipped = 0;
-      for (const r of data.rows) {
-        if ([..._mem.map.values()].some((c) => c.url === r.url)) {
-          skipped++;
-          continue;
-        }
-        const id = `imp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-        _mem.map.set(id, {
-          id,
-          name: r.name,
-          group: r.group as ChannelGroup,
-          logo: r.logo ?? "",
-          url: r.url,
-          fallbackUrl: r.fallbackUrl ?? null,
-          featured: !!r.featured,
-          order: memNextOrder(),
-        });
-        added++;
-      }
-      return { ok: true, added, skipped };
-    }
     const col = await channelsCol();
     let added = 0;
     let skipped = 0;
@@ -280,13 +195,64 @@ export const importChannels = createServerFn({ method: "POST" })
         group: r.group as ChannelGroup,
         logo: r.logo ?? "",
         url: r.url,
-        fallbackUrl: r.fallbackUrl ?? null,
+        fallbackUrl: r.fallbackUrl ?? undefined,
         featured: !!r.featured,
         order,
       });
       added++;
     }
     return { ok: true, added, skipped };
+  });
+
+// ------------------------------------------------------------------
+// Reads for the public site (channels + matches + teams).
+// Falls back to the bundled defaults when the collection is empty so
+// the site still renders before the first seed run.
+// ------------------------------------------------------------------
+
+export const listMatches = createServerFn({ method: "GET" }).handler(
+  async (): Promise<Match[]> => {
+    try {
+      const col = await matchesCol();
+      const count = await col.estimatedDocumentCount();
+      if (count === 0) return MATCHES;
+      return col.find({}, { projection: { _id: 0 } }).toArray();
+    } catch {
+      return MATCHES;
+    }
+  },
+);
+
+export const listTeams = createServerFn({ method: "GET" }).handler(
+  async (): Promise<Team[]> => {
+    try {
+      const col = await teamsCol();
+      const count = await col.estimatedDocumentCount();
+      if (count === 0) return TEAMS;
+      return col.find({}, { projection: { _id: 0 } }).toArray();
+    } catch {
+      return TEAMS;
+    }
+  },
+);
+
+const IdInput = z.object({ id: z.string().min(1) });
+
+export const getMatchById = createServerFn({ method: "GET" })
+  .validator((d) => IdInput.parse(d))
+  .handler(async ({ data }) => {
+    try {
+      const col = await matchesCol();
+      const found = await col.findOne(
+        { id: data.id },
+        { projection: { _id: 0 } },
+      );
+      if (found) return { match: found as Match };
+    } catch {
+      // fall through to bundled defaults
+    }
+    const match = MATCHES.find((m) => m.id === data.id) ?? null;
+    return { match };
   });
 
 export interface MongoStatus {
@@ -301,16 +267,7 @@ let _activeSessions = 0;
 export const getMongoStatus = createServerFn({ method: "GET" }).handler(
   async (): Promise<MongoStatus> => {
     try {
-      if (usingMemory()) {
-        memSeed();
-        return {
-          ok: true,
-          channelCount: _mem.map.size,
-          activeSessions: _activeSessions,
-          reason: "in-memory",
-        };
-      }
-      const c = await getClient();
+      const c = await getMongoClient();
       const db: Db = c.db(DB_NAME);
       const channelCount = await db.collection(COL_CHANNELS).countDocuments();
       return { ok: true, channelCount, activeSessions: _activeSessions };

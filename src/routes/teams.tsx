@@ -1,5 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { GROUPS, TEAMS, flagUrl } from "@/lib/worldcup-data";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { GROUPS, TEAMS, flagUrl, type Team } from "@/lib/worldcup-data";
+import { listTeams } from "@/lib/api/channels.functions";
 
 export const Route = createFileRoute("/teams")({
   head: () => ({
@@ -16,6 +19,13 @@ export const Route = createFileRoute("/teams")({
 });
 
 function TeamsPage() {
+  const teamsFn = useServerFn(listTeams);
+  const { data: dbTeams } = useQuery({
+    queryKey: ["teams", "list"],
+    queryFn: () => teamsFn(),
+    staleTime: 30_000,
+  });
+  const teams = (dbTeams && dbTeams.length > 0 ? dbTeams : TEAMS) as Team[];
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <header className="mb-10">
@@ -34,7 +44,7 @@ function TeamsPage() {
               <span className="text-sm font-normal text-muted-foreground">4 teams</span>
             </h2>
             <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-              {TEAMS.filter((t) => t.group === g).map((t) => (
+              {teams.filter((t) => t.group === g).map((t) => (
                 <Link
                   key={t.code}
                   to="/teams/$code"

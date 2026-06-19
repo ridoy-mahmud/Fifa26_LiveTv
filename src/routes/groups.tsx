@@ -1,5 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { GROUPS, groupStandings, matchesByGroup, flagUrl } from "@/lib/worldcup-data";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { GROUPS, groupStandings, matchesByGroup, flagUrl, MATCHES, TEAMS, type Match, type Team } from "@/lib/worldcup-data";
+import { listMatches, listTeams } from "@/lib/api/channels.functions";
 import { MatchCard } from "@/components/match/MatchCard";
 
 export const Route = createFileRoute("/groups")({
@@ -17,6 +20,20 @@ export const Route = createFileRoute("/groups")({
 });
 
 function GroupsPage() {
+  const matchesFn = useServerFn(listMatches);
+  const teamsFn = useServerFn(listTeams);
+  const { data: dbMatches } = useQuery({
+    queryKey: ["matches", "groups"],
+    queryFn: () => matchesFn(),
+    staleTime: 30_000,
+  });
+  const { data: dbTeams } = useQuery({
+    queryKey: ["teams", "groups"],
+    queryFn: () => teamsFn(),
+    staleTime: 30_000,
+  });
+  const matches = (dbMatches && dbMatches.length > 0 ? dbMatches : MATCHES) as Match[];
+  const teams = (dbTeams && dbTeams.length > 0 ? dbTeams : TEAMS) as Team[];
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <header className="mb-10">
@@ -29,15 +46,15 @@ function GroupsPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {GROUPS.map((g) => {
-          const standings = groupStandings(g);
-          const matches = matchesByGroup(g);
+          const standings = groupStandings(g, matches, teams);
+          const groupMatches = matchesByGroup(g, matches);
           return (
             <section key={g} className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
               <header className="flex items-center justify-between border-b border-border bg-secondary/50 px-5 py-3">
                 <h2 className="font-display text-lg font-bold">
                   Group <span className="text-primary">{g}</span>
                 </h2>
-                <span className="text-xs text-muted-foreground">{matches.length} matches</span>
+                <span className="text-xs text-muted-foreground">{groupMatches.length} matches</span>
               </header>
               <table className="w-full text-sm">
                 <thead>
@@ -72,9 +89,9 @@ function GroupsPage() {
                   ))}
                 </tbody>
               </table>
-              {matches.length > 0 && (
+              {groupMatches.length > 0 && (
                 <div className="grid gap-3 border-t border-border bg-background/40 p-4 sm:grid-cols-2">
-                  {matches.map((m) => <MatchCard key={m.id} match={m} />)}
+                  {groupMatches.map((m) => <MatchCard key={m.id} match={m} />)}
                 </div>
               )}
             </section>

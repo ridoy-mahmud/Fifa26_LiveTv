@@ -96,8 +96,8 @@ export const TEAMS: Team[] = [
   { code: "PAN", name: "Panama", group: "L" },
 ];
 
-export function getTeam(code: string): Team {
-  return TEAMS.find((t) => t.code === code) ?? { code, name: code, group: "?" };
+export function getTeam(code: string, source: Team[] = TEAMS): Team {
+  return source.find((t) => t.code === code) ?? { code, name: code, group: "?" };
 }
 
 export function flagUrl(code: string): string {
@@ -258,23 +258,23 @@ export const MATCHES: Match[] = [
   { id: "final", matchNumber: 104, stage: "Final", homeCode: "TBD", awayCode: "TBD", venue: "New York New Jersey Stadium", city: "New Jersey", kickoff: "2026-07-19T19:00:00Z", status: "scheduled", homeScore: 0, awayScore: 0 },
 ];
 
-export function getMatch(id: string): Match | undefined {
-  return MATCHES.find((m) => m.id === id);
+export function getMatch(id: string, source: Match[] = MATCHES): Match | undefined {
+  return source.find((m) => m.id === id);
 }
 
-export function liveMatches(): Match[] {
-  return MATCHES.filter((m) => m.status === "live" || m.status === "ht");
+export function liveMatches(source: Match[] = MATCHES): Match[] {
+  return source.filter((m) => m.status === "live" || m.status === "ht");
 }
 
-export function upcomingMatches(limit = 6): Match[] {
+export function upcomingMatches(limit = 6, source: Match[] = MATCHES): Match[] {
   const now = Date.now();
-  return MATCHES.filter((m) => m.status === "scheduled" && new Date(m.kickoff).getTime() > now)
+  return source.filter((m) => m.status === "scheduled" && new Date(m.kickoff).getTime() > now)
     .sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime())
     .slice(0, limit);
 }
 
-export function matchesByGroup(group: string): Match[] {
-  return MATCHES.filter((m) => m.group === group);
+export function matchesByGroup(group: string, source: Match[] = MATCHES): Match[] {
+  return source.filter((m) => m.group === group);
 }
 
 export interface StandingRow {
@@ -283,11 +283,15 @@ export interface StandingRow {
   gf: number; ga: number; gd: number; pts: number;
 }
 
-export function groupStandings(group: string): StandingRow[] {
-  const teams = TEAMS.filter((t) => t.group === group);
+export function groupStandings(
+  group: string,
+  matches: Match[] = MATCHES,
+  teams: Team[] = TEAMS,
+): StandingRow[] {
+  const groupTeams = teams.filter((t) => t.group === group);
   const rows: Record<string, StandingRow> = {};
-  for (const t of teams) rows[t.code] = { team: t, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0 };
-  for (const match of MATCHES.filter((m) => m.group === group && (m.status === "live" || m.status === "ht" || m.status === "ft"))) {
+  for (const t of groupTeams) rows[t.code] = { team: t, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0 };
+  for (const match of matches.filter((m) => m.group === group && (m.status === "live" || m.status === "ht" || m.status === "ft"))) {
     const h = rows[match.homeCode];
     const a = rows[match.awayCode];
     if (!h || !a) continue;

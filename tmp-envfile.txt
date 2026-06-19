@@ -1,0 +1,6 @@
+MONGODB_URI=mongodb+srv://worldcup26:Bl1ZIPXDXzUIjvZy@cluster0.0b7ezwy.mongodb.net/?appName=Cluster0
+MONGODB_DB=wc2026
+
+# password from the admin panel.
+ADMIN_EMAIL=mahamulhasan38@gmail.com
+ADMIN_PASSWORD=Ridoy007@#

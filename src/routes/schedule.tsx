@@ -1,5 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { MATCHES } from "@/lib/worldcup-data";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { MATCHES, type Match } from "@/lib/worldcup-data";
+import { listMatches } from "@/lib/api/channels.functions";
 import { MatchCard } from "@/components/match/MatchCard";
 import { format } from "date-fns";
 import { useMemo } from "react";
@@ -31,14 +34,22 @@ const STAGE_LABELS: Record<string, string> = {
 const STAGE_ORDER = ["Group", "R32", "R16", "QF", "SF", "3rd", "Final"];
 
 function SchedulePage() {
+  const matchesFn = useServerFn(listMatches);
+  const { data: dbMatches } = useQuery({
+    queryKey: ["matches", "schedule"],
+    queryFn: () => matchesFn(),
+    staleTime: 30_000,
+  });
+  const matches = (dbMatches && dbMatches.length > 0 ? dbMatches : MATCHES) as Match[];
+
   // Group by stage, then by day within each stage
   const byStage = useMemo(() => {
-    const stages: Record<string, typeof MATCHES> = {};
-    for (const m of MATCHES) {
+    const stages: Record<string, Match[]> = {};
+    for (const m of matches) {
       (stages[m.stage] ||= []).push(m);
     }
     return stages;
-  }, []);
+  }, [matches]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -46,7 +57,7 @@ function SchedulePage() {
         <span className="text-xs font-bold uppercase tracking-[0.2em] text-primary">FIFA World Cup 2026</span>
         <h1 className="mt-1 font-display text-4xl font-bold sm:text-5xl">Match schedule</h1>
         <p className="mt-3 max-w-2xl text-muted-foreground">
-          All {MATCHES.length} matches — group stage through the final. Times shown in your local timezone.
+          All {matches.length} matches — group stage through the final. Times shown in your local timezone.
         </p>
       </header>
 

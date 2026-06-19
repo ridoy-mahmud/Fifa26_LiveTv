@@ -17,7 +17,7 @@ import {
   patchChannel,
   replaceAllChannels,
   reorderChannels,
-  toggleFeatured,
+  toggleFeatured as toggleFeaturedFn,
   upsertChannel,
 } from "@/lib/api/channels.functions";
 import {
@@ -48,7 +48,7 @@ export function useChannelMutations() {
   const qc = useQueryClient();
   const upsertFn = useServerFn(upsertChannel);
   const patchFn = useServerFn(patchChannel);
-  const toggleFn = useServerFn(toggleFeatured);
+  const toggleFn = useServerFn(toggleFeaturedFn);
   const delFn = useServerFn(deleteChannel);
   const reorderFn = useServerFn(reorderChannels);
   const replaceAllFn = useServerFn(replaceAllChannels);
