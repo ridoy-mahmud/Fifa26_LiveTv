@@ -1,7 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import {
   Plus,
   Trash2,
@@ -17,14 +15,16 @@ import {
   Check,
   ChevronDown,
   GripVertical,
-  Database,
-  Loader2,
-  ShieldAlert,
 } from "lucide-react";
 import { useChannels, useChannelMutations, parseCsv } from "@/lib/channels-store";
 import { FALLBACK_LOGO, ALL_GROUPS, type Channel, type ChannelGroup } from "@/lib/channels-data";
-import { getMongoStatus } from "@/lib/api/channels.functions";
-import { seedIfEmpty } from "@/lib/api/seed.functions";
+
+const AdminAccessGate = lazy(() =>
+  import("@/components/admin/AdminAccess.client").then((mod) => ({ default: mod.AdminAccessGate })),
+);
+const MongoStatusBar = lazy(() =>
+  import("@/components/admin/AdminAccess.client").then((mod) => ({ default: mod.MongoStatusBar })),
+);
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -36,32 +36,13 @@ export const Route = createFileRoute("/admin")({
 type SortKey = "order" | "name" | "group";
 
 function AdminPage() {
-  const { channels, isLoading, refetch } = useChannels();
+  const { channels, isLoading } = useChannels();
   const mutations = useChannelMutations();
-  const statusFn = useServerFn(getMongoStatus);
-  const seedFn = useServerFn(seedIfEmpty);
-  const qc = useQueryClient();
+
   const [q, setQ] = useState("");
   const [groupFilter, setGroupFilter] = useState<ChannelGroup | "All" | "★ Top">("All");
   const [sortKey, setSortKey] = useState<SortKey>("order");
   const [sortAsc, setSortAsc] = useState(true);
-
-  const mongoQ = useQuery({
-    queryKey: ["mongo", "status"],
-    queryFn: () => statusFn(),
-    staleTime: 30_000,
-    retry: false,
-  });
-
-  const seedMut = useMutation({
-    mutationFn: () => seedFn(),
-    onSuccess: async (res) => {
-      await qc.invalidateQueries({ queryKey: ["mongo", "status"] });
-      await qc.invalidateQueries({ queryKey: ["channels"] });
-      alert(`Seeded. Channels: ${res.channels}, admin: ${res.admin ? "created" : "existed"}.`);
-    },
-    onError: (e: unknown) => alert(e instanceof Error ? e.message : "Seed failed"),
-  });
 
   const filtered = useMemo(() => {
     let list = [...channels];
@@ -136,7 +117,17 @@ function AdminPage() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <Suspense
+      fallback={
+        <div className="mx-auto flex min-h-[60vh] max-w-2xl items-center justify-center px-4 py-12">
+          <div className="w-full rounded-2xl border border-border bg-card p-8 text-center shadow-card">
+            <div className="text-sm text-muted-foreground">Loading admin panel…</div>
+          </div>
+        </div>
+      }
+    >
+      <AdminAccessGate>
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Header */}
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -173,19 +164,9 @@ function AdminPage() {
         </div>
       </header>
 
-      {/* DB status bar */}
-      <DbStatusBar
-        connected={!!mongoQ.data?.ok}
-        channelCount={mongoQ.data?.channelCount ?? 0}
-        sessionCount={mongoQ.data?.activeSessions ?? 0}
-        reason={mongoQ.data?.reason}
-        loading={mongoQ.isLoading}
-        onSeed={() => seedMut.mutate()}
-        seeding={seedMut.isPending}
-        onRefresh={async () => {
-          await Promise.all([mongoQ.refetch(), refetch()]);
-        }}
-      />
+      <div className="mb-4">
+        <MongoStatusBar />
+      </div>
 
       {/* Add channel form */}
       <div className="mt-4">
@@ -397,78 +378,9 @@ function AdminPage() {
         <Tv className="mr-1 inline h-3 w-3" />
         Edits persist in MongoDB Atlas. Changes are visible to all visitors.
       </p>
-    </div>
-  );
-}
-
-function DbStatusBar({
-  connected,
-  channelCount,
-  sessionCount,
-  reason,
-  loading,
-  onSeed,
-  seeding,
-  onRefresh,
-}: {
-  connected: boolean;
-  channelCount: number;
-  sessionCount: number;
-  reason?: string;
-  loading: boolean;
-  onSeed: () => void;
-  seeding: boolean;
-  onRefresh: () => void;
-}) {
-  const empty = connected && channelCount === 0;
-  return (
-    <div
-      className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2 text-xs ${
-        connected
-          ? empty
-            ? "border-gold/40 bg-gold/10"
-            : "border-emerald-500/40 bg-emerald-500/10"
-          : "border-live/40 bg-live/10"
-      }`}
-    >
-      <div className="flex items-center gap-2">
-        {loading ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        ) : connected ? (
-          <Database className="h-3.5 w-3.5 text-emerald-400" />
-        ) : (
-          <ShieldAlert className="h-3.5 w-3.5 text-live" />
-        )}
-        <span>
-          {loading
-            ? "Checking database…"
-            : !connected
-              ? `MongoDB not reachable${reason ? `: ${reason}` : ""}`
-              : empty
-                ? "Database is empty"
-                : `MongoDB connected · ${channelCount} channels · ${sessionCount} active session${sessionCount === 1 ? "" : "s"}`}
-        </span>
-      </div>
-      <div className="flex items-center gap-2">
-        {empty && (
-          <button
-            onClick={onSeed}
-            disabled={seeding}
-            className="inline-flex items-center gap-1.5 rounded-md bg-gold px-2.5 py-1 font-semibold text-background disabled:opacity-60"
-          >
-            {seeding && <Loader2 className="h-3 w-3 animate-spin" />}
-            Seed from defaults
-          </button>
-        )}
-        <button
-          onClick={onRefresh}
-          title="Refresh"
-          className="rounded-md border border-border bg-card px-2 py-1 font-semibold hover:bg-secondary"
-        >
-          Refresh
-        </button>
-      </div>
-    </div>
+        </div>
+      </AdminAccessGate>
+    </Suspense>
   );
 }
 

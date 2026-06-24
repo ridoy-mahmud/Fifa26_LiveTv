@@ -47,10 +47,6 @@ function normalizeMongoUri(rawUri: string): string {
       url.password = decodeURIComponent(url.password);
     }
 
-    if (!url.searchParams.has("authSource")) {
-      url.searchParams.set("authSource", readEnv(MONGO_AUTH_SOURCE_KEYS) || "admin");
-    }
-
     return url.toString();
   } catch {
     return cleaned;
@@ -98,7 +94,6 @@ async function createClient(): Promise<import("mongodb").MongoClient> {
     },
     // TLS is always required by Atlas; make it explicit
     tls: true,
-    authMechanism: "SCRAM-SHA-256",
     runtimeAdapters: {
       os: {
         release: os.release,

@@ -11,8 +11,8 @@ import { MATCHES, TEAMS, type Match, type Team } from "@/lib/worldcup-data";
  *   - teams    : TEAMS          (from @/lib/worldcup-data)
  *   - matches  : MATCHES        (from @/lib/worldcup-data)
  *
- * Admin auth is cookie-based (see admin-auth.functions.ts) — there is no
- * admins collection to seed.
+ * Admin access is handled by Firebase Google sign-in in the client.
+ * There is no admins collection to seed.
  *
  * Returns:
  *   { channels, teams, matches, admin }
