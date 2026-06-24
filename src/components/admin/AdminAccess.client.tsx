@@ -2,7 +2,7 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
-import { Chrome, Database, Loader2, RefreshCw, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Chrome, Database, Loader2, RefreshCw, ShieldCheck, ShieldAlert, LogOut } from "lucide-react";
 import { firebaseAuth, googleAuthProvider, ADMIN_EMAIL } from "@/lib/firebase.client";
 import { getMongoStatus } from "@/lib/api/channels.functions";
 import { seedIfEmpty } from "@/lib/api/seed.functions";
@@ -201,6 +201,33 @@ export function MongoStatusBar() {
           Refresh
         </button>
       </div>
+    </div>
+  );
+}
+
+export function AdminLogout() {
+  const { user, logout } = useGoogleAdminAuth();
+
+  if (!user) return null;
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 text-sm">
+        <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold">
+          {user.email?.[0].toUpperCase()}
+        </div>
+        <div className="flex flex-col">
+          <span className="font-semibold text-foreground">{user.displayName || user.email}</span>
+          <span className="text-xs text-muted-foreground">{user.email}</span>
+        </div>
+      </div>
+      <button
+        onClick={() => void logout()}
+        className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold transition hover:bg-secondary"
+      >
+        <LogOut className="h-4 w-4" />
+        Sign out
+      </button>
     </div>
   );
 }

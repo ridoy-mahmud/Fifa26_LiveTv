@@ -15,6 +15,7 @@ import {
   Check,
   ChevronDown,
   GripVertical,
+  LogOut,
 } from "lucide-react";
 import { useChannels, useChannelMutations, parseCsv } from "@/lib/channels-store";
 import { FALLBACK_LOGO, ALL_GROUPS, type Channel, type ChannelGroup } from "@/lib/channels-data";
@@ -24,6 +25,9 @@ const AdminAccessGate = lazy(() =>
 );
 const MongoStatusBar = lazy(() =>
   import("@/components/admin/AdminAccess.client").then((mod) => ({ default: mod.MongoStatusBar })),
+);
+const AdminLogout = lazy(() =>
+  import("@/components/admin/AdminAccess.client").then((mod) => ({ default: mod.AdminLogout })),
 );
 
 export const Route = createFileRoute("/admin")({
@@ -140,6 +144,9 @@ function AdminPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Suspense fallback={<div className="h-9 w-20" />}>
+            <AdminLogout />
+          </Suspense>
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold transition hover:bg-secondary">
             <Upload className="h-4 w-4" /> Import JSON/CSV
             <input

@@ -10,9 +10,9 @@ export default defineConfig({
   tanstackStart: {
     // Use default TanStack Start server configuration
   },
-  // Pin the Nitro preset to Netlify so the build emits a Netlify-compatible
+  // Pin the Nitro preset to Vercel so the build emits a Vercel-compatible
   // server bundle and build output.
   nitro: {
-    preset: "netlify",
+    preset: "vercel",
   },
 });

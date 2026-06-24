@@ -52,11 +52,16 @@ npm run preview
 Copy `.env.example` to `.env` and fill in:
 
 ```
-ADMIN_EMAIL=your@email.com
-ADMIN_PASSWORD=your-secure-password
+MONGODB_URI=mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/?appName=Cluster0
+MONGODB_DB=wc2026
 ```
 
-> Stream URLs are **not committed** to this repo (see `.gitignore`). Add channels via the admin panel at `/admin` after signing in.
+**Admin Authentication:**
+- The admin panel uses Firebase Google Authentication
+- Only the configured email (`mahamulhasan38@gmail.com`) can access the admin panel
+- Firebase configuration is already included in the project
+
+> Stream URLs are **not committed** to this repo (see `.gitignore`). Add channels via the admin panel at `/admin` after signing in with Google.
 
 ---
 

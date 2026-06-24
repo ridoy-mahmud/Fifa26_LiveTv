@@ -14,9 +14,15 @@ Configure these environment variables in your Vercel project settings:
 
 ### Required Variables
 
-- `ADMIN_EMAIL` - Admin email for authentication
-- `ADMIN_PASSWORD` - Secure password for admin access
 - `MONGODB_URI` - MongoDB connection string for the admin dashboard and channel data
+- `MONGODB_DB` - MongoDB database name (default: wc2026)
+
+### Admin Authentication
+
+- The admin panel uses Firebase Google Authentication
+- Only the configured email (`mahamulhasan38@gmail.com`) can access the admin panel
+- Firebase configuration is already included in the project
+- No additional environment variables needed for authentication
 
 ### Accepted MongoDB Aliases
 
@@ -47,7 +53,7 @@ If you use one of the aliases, make sure it is added to the **Production** envir
 
 - **Framework Preset**: Other
 - **Build Command**: `npm run build`
-- **Output Directory**: `.vercel/output`
+- **Output Directory**: `dist`
 - **Install Command**: `npm install`
 
 #### Environment Variables
@@ -78,6 +84,23 @@ The project uses a simple `vercel.json` file with essential settings:
 - **Framework**: null (let TanStack Start handle everything)
 
 TanStack Start generates the correct build structure automatically.
+
+### vite.config.ts
+
+The Vite configuration uses TanStack Start with the Vercel Nitro preset:
+
+```typescript
+export default defineConfig({
+  tanstackStart: {
+    // Use default TanStack Start server configuration
+  },
+  nitro: {
+    preset: "vercel",
+  },
+});
+```
+
+This ensures the build output is compatible with Vercel's serverless functions.
 
 ### .vercelignore
 
@@ -113,7 +136,9 @@ This ensures maximum compatibility and stability for Vercel deployment.
 
 - [ ] Verify the site loads correctly
 - [ ] Test live TV streaming functionality
-- [ ] Check admin panel login
+- [ ] Check admin panel Google sign-in with mahamulhasan38@gmail.com
+- [ ] Verify MongoDB connection status in admin panel
+- [ ] Test adding/editing/deleting channels in admin panel
 - [ ] Test mobile responsiveness
 - [ ] Verify all channel groups load
 - [ ] Test channel switching
