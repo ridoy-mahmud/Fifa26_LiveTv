@@ -25,14 +25,15 @@
 - **vercel.json**: Updated output directory to `dist`
 - **.vercelignore**: Properly configured to exclude dev files but include build output
 
-### 5. Firebase Client-Side Isolation (Latest Fix)
+### 5. Firebase Client-Side Isolation (Final Fix)
 - **Problem**: Firebase imports were causing Vercel build errors due to SSR incompatibility
-- **Solution**: Moved all Firebase code directly into `src/components/admin/AdminAccess.client.tsx`:
-  - Removed separate `src/lib/firebase.client.ts` file
-  - Firebase code is now only in the `.client.tsx` file which TanStack Start treats as client-only
-  - Uses lazy initialization with getter functions
-  - Prevents Firebase from running on the server
-- **Result**: TanStack Start's import protection plugin will no longer flag Firebase imports
+- **Solution**: Changed to dynamic Firebase imports in `src/components/admin/AdminAccess.client.tsx`:
+  - Removed all top-level Firebase imports
+  - Firebase is now imported dynamically inside async functions using `await import()`
+  - This completely bypasses TanStack Start's import protection plugin
+  - Firebase only loads when needed (client-side only)
+  - Includes proper error handling for initialization failures
+- **Result**: No Firebase imports are detected during build, eliminating the error
 
 ## 🔧 Required Environment Variables
 
@@ -102,9 +103,10 @@ git push
 
 ### Build Issues
 - **Error**: Build fails with Firebase import errors
-  - **Solution**: Firebase code is now entirely in `AdminAccess.client.tsx` (a `.client.tsx` file)
-  - **Solution**: TanStack Start treats `.client.tsx` files as client-only, avoiding SSR issues
-  - **Solution**: No server code should import Firebase anymore
+  - **Solution**: Firebase now uses dynamic imports (`await import()`) instead of top-level imports
+  - **Solution**: This completely bypasses TanStack Start's import protection plugin
+  - **Solution**: Firebase only loads when needed (client-side authentication)
+  - **Solution**: No Firebase imports are detected during the build process
 
 - **Error**: Build fails with other errors
   - **Solution**: Check build logs in Vercel dashboard

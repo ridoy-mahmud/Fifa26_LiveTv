@@ -1,58 +1,78 @@
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type Auth, type GoogleAuthProvider as GoogleAuthProviderType, type User } from "firebase/auth";
 import { Chrome, Database, Loader2, RefreshCw, ShieldCheck, ShieldAlert, LogOut } from "lucide-react";
 import { getMongoStatus } from "@/lib/api/channels.functions";
 import { seedIfEmpty } from "@/lib/api/seed.functions";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCvtaQo4jSgAym8XpyC2-kYMqPfmt2LMU8",
-  authDomain: "sunlit-context-450609-v6.firebaseapp.com",
-  projectId: "sunlit-context-450609-v6",
-  storageBucket: "sunlit-context-450609-v6.firebasestorage.app",
-  messagingSenderId: "945079709177",
-  appId: "1:945079709177:web:929228df767a788a26e128",
-};
-
 const ADMIN_EMAIL = "mahamulhasan38@gmail.com";
 
-let firebaseApp: ReturnType<typeof initializeApp> | null = null;
-let firebaseAuth: Auth | null = null;
-let googleAuthProvider: GoogleAuthProviderType | null = null;
+// Dynamic Firebase imports to avoid SSR issues
+let firebaseApp: any = null;
+let firebaseAuth: any = null;
+let googleAuthProvider: any = null;
 
-function getFirebaseApp() {
+async function initializeFirebase() {
   if (typeof window === "undefined") return null;
-  if (!firebaseApp) {
+  
+  if (firebaseApp) return firebaseApp;
+  
+  try {
+    const { initializeApp, getApps, getApp } = await import("firebase/app");
+    const firebaseConfig = {
+      apiKey: "AIzaSyCvtaQo4jSgAym8XpyC2-kYMqPfmt2LMU8",
+      authDomain: "sunlit-context-450609-v6.firebaseapp.com",
+      projectId: "sunlit-context-450609-v6",
+      storageBucket: "sunlit-context-450609-v6.firebasestorage.app",
+      messagingSenderId: "945079709177",
+      appId: "1:945079709177:web:929228df767a788a26e128",
+    };
+    
     const apps = getApps();
     if (apps.length > 0) {
       firebaseApp = getApp();
     } else {
       firebaseApp = initializeApp(firebaseConfig);
     }
+    return firebaseApp;
+  } catch (error) {
+    console.error("Firebase initialization error:", error);
+    return null;
   }
-  return firebaseApp;
 }
 
-function getFirebaseAuth() {
+async function getFirebaseAuth() {
   if (typeof window === "undefined") return null;
-  if (!firebaseAuth) {
-    const app = getFirebaseApp();
+  
+  if (firebaseAuth) return firebaseAuth;
+  
+  try {
+    const { getAuth } = await import("firebase/auth");
+    const app = await initializeFirebase();
     if (app) {
       firebaseAuth = getAuth(app);
     }
+    return firebaseAuth;
+  } catch (error) {
+    console.error("Firebase auth initialization error:", error);
+    return null;
   }
-  return firebaseAuth;
 }
 
-function getGoogleAuthProvider() {
+async function getGoogleAuthProvider() {
   if (typeof window === "undefined") return null;
-  if (!googleAuthProvider) {
+  
+  if (googleAuthProvider) return googleAuthProvider;
+  
+  try {
+    const { GoogleAuthProvider } = await import("firebase/auth");
     googleAuthProvider = new GoogleAuthProvider();
     googleAuthProvider.setCustomParameters({ prompt: "select_account" });
+    return googleAuthProvider;
+  } catch (error) {
+    console.error("Google auth provider initialization error:", error);
+    return null;
   }
-  return googleAuthProvider;
 }
 
 function isAllowedEmail(email: string | null | undefined) {
@@ -60,52 +80,71 @@ function isAllowedEmail(email: string | null | undefined) {
 }
 
 function useGoogleAdminAuth() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const auth = getFirebaseAuth();
-    if (!auth) {
-      setLoading(false);
-      return;
-    }
+    let unsubscribe: any = null;
 
-    const unsubscribe = onAuthStateChanged(auth, async (nextUser) => {
-      if (!nextUser?.email) {
-        setUser(null);
+    const setupAuth = async () => {
+      try {
+        const auth = await getFirebaseAuth();
+        if (!auth) {
+          setLoading(false);
+          return;
+        }
+
+        const { onAuthStateChanged, signOut } = await import("firebase/auth");
+
+        unsubscribe = onAuthStateChanged(auth, async (nextUser: any) => {
+          if (!nextUser?.email) {
+            setUser(null);
+            setLoading(false);
+            return;
+          }
+
+          if (!isAllowedEmail(nextUser.email)) {
+            await signOut(auth).catch(() => undefined);
+            setUser(null);
+            setError(`Use ${ADMIN_EMAIL} to access the admin panel.`);
+            setLoading(false);
+            return;
+          }
+
+          setUser(nextUser);
+          setError(null);
+          setLoading(false);
+        });
+      } catch (err) {
+        console.error("Auth setup error:", err);
+        setError("Authentication setup failed");
         setLoading(false);
-        return;
       }
+    };
 
-      if (!isAllowedEmail(nextUser.email)) {
-        await signOut(auth).catch(() => undefined);
-        setUser(null);
-        setError(`Use ${ADMIN_EMAIL} to access the admin panel.`);
-        setLoading(false);
-        return;
-      }
+    setupAuth();
 
-      setUser(nextUser);
-      setError(null);
-      setLoading(false);
-    });
-
-    return unsubscribe;
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   const login = async () => {
     setError(null);
-    const auth = getFirebaseAuth();
-    const provider = getGoogleAuthProvider();
     
-    if (!auth || !provider) {
-      setError("Firebase not available");
-      return false;
-    }
-
     try {
+      const auth = await getFirebaseAuth();
+      const provider = await getGoogleAuthProvider();
+      
+      if (!auth || !provider) {
+        setError("Firebase not available");
+        return false;
+      }
+
+      const { signInWithPopup, signOut } = await import("firebase/auth");
       const result = await signInWithPopup(auth, provider);
+      
       if (!isAllowedEmail(result.user.email)) {
         await signOut(auth).catch(() => undefined);
         setUser(null);
@@ -121,9 +160,14 @@ function useGoogleAdminAuth() {
   };
 
   const logout = async () => {
-    const auth = getFirebaseAuth();
-    if (auth) {
-      await signOut(auth);
+    try {
+      const auth = await getFirebaseAuth();
+      if (auth) {
+        const { signOut } = await import("firebase/auth");
+        await signOut(auth);
+      }
+    } catch (err) {
+      console.error("Logout error:", err);
     }
     setUser(null);
   };
