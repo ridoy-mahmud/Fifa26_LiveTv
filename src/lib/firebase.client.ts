@@ -1,5 +1,5 @@
-import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider, type Auth, type GoogleAuthProvider as GoogleAuthProviderType } from "firebase/auth";
 
 export const firebaseConfig = {
   apiKey: "AIzaSyCvtaQo4jSgAym8XpyC2-kYMqPfmt2LMU8",
@@ -12,8 +12,39 @@ export const firebaseConfig = {
 
 export const ADMIN_EMAIL = "mahamulhasan38@gmail.com";
 
-export const firebaseApp = initializeApp(firebaseConfig);
-export const firebaseAuth = getAuth(firebaseApp);
+let firebaseApp: ReturnType<typeof initializeApp> | null = null;
+let firebaseAuth: Auth | null = null;
+let googleAuthProvider: GoogleAuthProviderType | null = null;
 
-export const googleAuthProvider = new GoogleAuthProvider();
-googleAuthProvider.setCustomParameters({ prompt: "select_account" });
+export function getFirebaseApp() {
+  if (typeof window === "undefined") return null;
+  if (!firebaseApp) {
+    const apps = getApps();
+    if (apps.length > 0) {
+      firebaseApp = getApp();
+    } else {
+      firebaseApp = initializeApp(firebaseConfig);
+    }
+  }
+  return firebaseApp;
+}
+
+export function getFirebaseAuth() {
+  if (typeof window === "undefined") return null;
+  if (!firebaseAuth) {
+    const app = getFirebaseApp();
+    if (app) {
+      firebaseAuth = getAuth(app);
+    }
+  }
+  return firebaseAuth;
+}
+
+export function getGoogleAuthProvider() {
+  if (typeof window === "undefined") return null;
+  if (!googleAuthProvider) {
+    googleAuthProvider = new GoogleAuthProvider();
+    googleAuthProvider.setCustomParameters({ prompt: "select_account" });
+  }
+  return googleAuthProvider;
+}

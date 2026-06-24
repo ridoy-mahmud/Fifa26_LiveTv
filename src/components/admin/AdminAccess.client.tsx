@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
 import { Chrome, Database, Loader2, RefreshCw, ShieldCheck, ShieldAlert, LogOut } from "lucide-react";
-import { firebaseAuth, googleAuthProvider, ADMIN_EMAIL } from "@/lib/firebase.client";
+import { getFirebaseAuth, getGoogleAuthProvider, ADMIN_EMAIL } from "@/lib/firebase.client";
 import { getMongoStatus } from "@/lib/api/channels.functions";
 import { seedIfEmpty } from "@/lib/api/seed.functions";
 
@@ -17,7 +17,13 @@ function useGoogleAdminAuth() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(firebaseAuth, async (nextUser) => {
+    const auth = getFirebaseAuth();
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, async (nextUser) => {
       if (!nextUser?.email) {
         setUser(null);
         setLoading(false);
@@ -25,7 +31,7 @@ function useGoogleAdminAuth() {
       }
 
       if (!isAllowedEmail(nextUser.email)) {
-        await signOut(firebaseAuth).catch(() => undefined);
+        await signOut(auth).catch(() => undefined);
         setUser(null);
         setError(`Use ${ADMIN_EMAIL} to access the admin panel.`);
         setLoading(false);
@@ -42,10 +48,18 @@ function useGoogleAdminAuth() {
 
   const login = async () => {
     setError(null);
+    const auth = getFirebaseAuth();
+    const provider = getGoogleAuthProvider();
+    
+    if (!auth || !provider) {
+      setError("Firebase not available");
+      return false;
+    }
+
     try {
-      const result = await signInWithPopup(firebaseAuth, googleAuthProvider);
+      const result = await signInWithPopup(auth, provider);
       if (!isAllowedEmail(result.user.email)) {
-        await signOut(firebaseAuth).catch(() => undefined);
+        await signOut(auth).catch(() => undefined);
         setUser(null);
         setError(`Use ${ADMIN_EMAIL} to access the admin panel.`);
         return false;
@@ -59,7 +73,10 @@ function useGoogleAdminAuth() {
   };
 
   const logout = async () => {
-    await signOut(firebaseAuth);
+    const auth = getFirebaseAuth();
+    if (auth) {
+      await signOut(auth);
+    }
     setUser(null);
   };
 
@@ -111,7 +128,7 @@ export function AdminAccessGate({ children }: { children: ReactNode }) {
 
             <button
               type="button"
-              onClick={() => void login()}
+              onClick={() => login().catch(console.error)}
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary-glow"
             >
               <Chrome className="h-4 w-4" />
@@ -222,7 +239,7 @@ export function AdminLogout() {
         </div>
       </div>
       <button
-        onClick={() => void logout()}
+        onClick={() => logout().catch(console.error)}
         className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold transition hover:bg-secondary"
       >
         <LogOut className="h-4 w-4" />
