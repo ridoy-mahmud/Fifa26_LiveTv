@@ -59,7 +59,7 @@ MONGODB_DB=wc2026
 **Admin Authentication:**
 - The admin panel uses Firebase Google Authentication
 - Only the configured email (`mahamulhasan38@gmail.com`) can access the admin panel
-- Firebase configuration is already included in the project
+- Firebase configuration is included in the admin component (client-side only)
 
 > Stream URLs are **not committed** to this repo (see `.gitignore`). Add channels via the admin panel at `/admin` after signing in with Google.
 

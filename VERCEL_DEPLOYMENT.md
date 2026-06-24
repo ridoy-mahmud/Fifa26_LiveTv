@@ -21,7 +21,8 @@ Configure these environment variables in your Vercel project settings:
 
 - The admin panel uses Firebase Google Authentication
 - Only the configured email (`mahamulhasan38@gmail.com`) can access the admin panel
-- Firebase configuration is already included in the project
+- Firebase configuration is included in `src/components/admin/AdminAccess.client.tsx`
+- Firebase code is isolated in a `.client.tsx` file to avoid SSR build issues
 - No additional environment variables needed for authentication
 
 ### Accepted MongoDB Aliases
@@ -161,6 +162,12 @@ This ensures maximum compatibility and stability for Vercel deployment.
 - The project requires Node.js >= 20.0.0
 - Check `.nvmrc` file specifies Node 20
 - In Vercel project settings, set Node.js Version to 20.x
+
+**Issue: Firebase import/build errors**
+
+- Firebase code is isolated in `AdminAccess.client.tsx` (a `.client.tsx` file)
+- TanStack Start treats `.client.tsx` files as client-only, avoiding SSR issues
+- No server code should import Firebase - all Firebase code is client-side only
 
 **Issue: Nitro/Vercel preset errors**
 

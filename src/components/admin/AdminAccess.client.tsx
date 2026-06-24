@@ -1,11 +1,59 @@
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type Auth, type GoogleAuthProvider as GoogleAuthProviderType, type User } from "firebase/auth";
 import { Chrome, Database, Loader2, RefreshCw, ShieldCheck, ShieldAlert, LogOut } from "lucide-react";
-import { getFirebaseAuth, getGoogleAuthProvider, ADMIN_EMAIL } from "@/lib/firebase.client";
 import { getMongoStatus } from "@/lib/api/channels.functions";
 import { seedIfEmpty } from "@/lib/api/seed.functions";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCvtaQo4jSgAym8XpyC2-kYMqPfmt2LMU8",
+  authDomain: "sunlit-context-450609-v6.firebaseapp.com",
+  projectId: "sunlit-context-450609-v6",
+  storageBucket: "sunlit-context-450609-v6.firebasestorage.app",
+  messagingSenderId: "945079709177",
+  appId: "1:945079709177:web:929228df767a788a26e128",
+};
+
+const ADMIN_EMAIL = "mahamulhasan38@gmail.com";
+
+let firebaseApp: ReturnType<typeof initializeApp> | null = null;
+let firebaseAuth: Auth | null = null;
+let googleAuthProvider: GoogleAuthProviderType | null = null;
+
+function getFirebaseApp() {
+  if (typeof window === "undefined") return null;
+  if (!firebaseApp) {
+    const apps = getApps();
+    if (apps.length > 0) {
+      firebaseApp = getApp();
+    } else {
+      firebaseApp = initializeApp(firebaseConfig);
+    }
+  }
+  return firebaseApp;
+}
+
+function getFirebaseAuth() {
+  if (typeof window === "undefined") return null;
+  if (!firebaseAuth) {
+    const app = getFirebaseApp();
+    if (app) {
+      firebaseAuth = getAuth(app);
+    }
+  }
+  return firebaseAuth;
+}
+
+function getGoogleAuthProvider() {
+  if (typeof window === "undefined") return null;
+  if (!googleAuthProvider) {
+    googleAuthProvider = new GoogleAuthProvider();
+    googleAuthProvider.setCustomParameters({ prompt: "select_account" });
+  }
+  return googleAuthProvider;
+}
 
 function isAllowedEmail(email: string | null | undefined) {
   return !!email && email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
