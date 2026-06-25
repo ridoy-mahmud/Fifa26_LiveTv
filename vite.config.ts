@@ -13,6 +13,6 @@ export default defineConfig({
   // Pin the Nitro preset to Vercel so the build emits a Vercel-compatible
   // server bundle and build output.
   nitro: {
-    preset: "vercel",
+    preset: "netlify",
   },
 });
