@@ -92,7 +92,7 @@ export async function onAuthStateChanged(callback: (user: any) => void) {
   try {
     const { onAuthStateChanged: firebaseOnAuthStateChanged } = await import("firebase/auth");
     const auth = await getFirebaseAuth();
-    return firebaseOnAuthStateChanged(auth, (user: any) => {
+    const unsubscribe = firebaseOnAuthStateChanged(auth, (user: any) => {
       if (user?.email && !isAllowedEmail(user.email)) {
         signOut().catch(console.error);
         callback(null);
@@ -100,6 +100,7 @@ export async function onAuthStateChanged(callback: (user: any) => void) {
         callback(user);
       }
     });
+    return unsubscribe;
   } catch (error) {
     console.error("Auth state listener error:", error);
     throw error;

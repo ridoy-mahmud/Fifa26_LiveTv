@@ -21,13 +21,13 @@ import { useChannels, useChannelMutations, parseCsv } from "@/lib/channels-store
 import { FALLBACK_LOGO, ALL_GROUPS, type Channel, type ChannelGroup } from "@/lib/channels-data";
 
 const AdminAccessGate = lazy(() =>
-  import("@/components/admin/AdminAccess").then((mod) => ({ default: mod.AdminAccessGate })),
+  import("@/components/admin/AdminAccess.client").then((mod) => ({ default: mod.AdminAccessGate })),
 );
 const MongoStatusBar = lazy(() =>
-  import("@/components/admin/AdminAccess").then((mod) => ({ default: mod.MongoStatusBar })),
+  import("@/components/admin/AdminAccess.client").then((mod) => ({ default: mod.MongoStatusBar })),
 );
 const AdminLogout = lazy(() =>
-  import("@/components/admin/AdminAccess").then((mod) => ({ default: mod.AdminLogout })),
+  import("@/components/admin/AdminAccess.client").then((mod) => ({ default: mod.AdminLogout })),
 );
 
 export const Route = createFileRoute("/admin")({
@@ -232,8 +232,8 @@ function AdminPage() {
                     key={g}
                     onClick={() => setGroupFilter(g as typeof groupFilter)}
                     className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold transition ${groupFilter === g
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"
                       }`}
                   >
                     {g} <span className="opacity-70">({count})</span>
@@ -326,8 +326,8 @@ function AdminPage() {
                             title={c.featured ? "Remove from Top 10" : "Add to Top 10"}
                             disabled={mutations.toggleFeatured.isPending}
                             className={`inline-flex h-7 w-7 items-center justify-center rounded-full transition ${c.featured
-                                ? "bg-gold/20 text-gold hover:bg-gold/30"
-                                : "bg-secondary text-muted-foreground hover:bg-secondary/80 hover:text-gold"
+                              ? "bg-gold/20 text-gold hover:bg-gold/30"
+                              : "bg-secondary text-muted-foreground hover:bg-secondary/80 hover:text-gold"
                               }`}
                           >
                             <Star className={`h-3.5 w-3.5 ${c.featured ? "fill-gold" : ""}`} />
