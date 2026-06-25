@@ -54,14 +54,15 @@ Copy `.env.example` to `.env` and fill in:
 ```
 MONGODB_URI=mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/?appName=Cluster0
 MONGODB_DB=wc2026
+ADMIN_PASSWORD=your-secure-password
 ```
 
 **Admin Authentication:**
-- The admin panel uses Firebase Google Authentication
+- The admin panel uses simple session-based authentication
 - Only the configured email (`mahamulhasan38@gmail.com`) can access the admin panel
-- Firebase configuration is included in the admin component (client-side only)
+- Set your admin password in the `ADMIN_PASSWORD` environment variable
 
-> Stream URLs are **not committed** to this repo (see `.gitignore`). Add channels via the admin panel at `/admin` after signing in with Google.
+> Stream URLs are **not committed** to this repo (see `.gitignore`). Add channels via the admin panel at `/admin` after signing in.
 
 ---
 

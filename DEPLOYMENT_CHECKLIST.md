@@ -25,15 +25,16 @@
 - **vercel.json**: Updated output directory to `dist`
 - **.vercelignore**: Properly configured to exclude dev files but include build output
 
-### 5. Firebase Client-Side Isolation (Final Fix)
-- **Problem**: Firebase imports were causing Vercel build errors due to SSR incompatibility
-- **Solution**: Created a Vite virtual module to completely bypass TanStack Start's import protection:
-  - Added a virtual module `virtual:firebase-auth` in `vite.config.ts`
-  - The virtual module provides Firebase functions without exposing Firebase import strings in source code
-  - Firebase imports happen inside the virtual module's runtime code, not in source
-  - TanStack Start's import protection plugin scans source code, not runtime module content
-  - Updated `AdminAccess.client.tsx` to import from the virtual module instead of Firebase directly
-- **Result**: No Firebase import strings are detected during build, eliminating the error completely
+### 5. Authentication System (Final Fix)
+- **Problem**: Firebase imports were causing Vercel build errors due to TanStack Start's import protection plugin
+- **Solution**: Replaced Firebase with simple session-based authentication:
+  - Created `src/lib/api/auth.functions.ts` with server functions using `createServerFn`
+  - Authentication now uses email/password instead of Google OAuth
+  - Only `mahamulhasan38@gmail.com` can access the admin panel
+  - Password is set via `ADMIN_PASSWORD` environment variable
+  - Session expires after 24 hours
+  - No Firebase imports = no import protection errors
+- **Result**: Build works correctly with TanStack Start's architecture
 
 ## 🔧 Required Environment Variables
 
@@ -43,20 +44,20 @@ Set these in your Vercel Project Settings → Environment Variables:
 ```
 MONGODB_URI=mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/?appName=Cluster0
 MONGODB_DB=wc2026
+ADMIN_PASSWORD=your-secure-password
 ```
 
-### Firebase Configuration
-Firebase is already configured in the project:
-- **Project ID**: sunlit-context-450609-v6
-- **API Key**: AIzaSyCvtaQo4jSgAym8XpyC2-kYMqPfmt2LMU8
-- **Authorized Email**: mahamulhasan38@gmail.com
+### Admin Authentication
+- **Email**: Only `mahamulhasan38@gmail.com` can access the admin panel
+- **Password**: Set via `ADMIN_PASSWORD` environment variable
+- **Session**: Expires after 24 hours
 
 ## 🚀 Deployment Steps
 
 ### 1. Push Changes to GitHub
 ```bash
 git add .
-git commit -m "Implement Firebase Google auth for admin panel and fix MongoDB connection"
+git commit -m "Replace Firebase auth with session-based auth to fix TanStack Start import protection error"
 git push
 ```
 
@@ -65,6 +66,7 @@ git push
 2. Add environment variables:
    - `MONGODB_URI` (your MongoDB connection string)
    - `MONGODB_DB` (default: wc2026)
+   - `ADMIN_PASSWORD` (your admin password)
 3. Make sure variables are set for **Production** environment
 
 ### 3. Deploy
@@ -74,7 +76,7 @@ git push
 ### 4. Post-Deployment Testing
 1. **Test admin panel access**:
    - Navigate to `/admin`
-   - Sign in with Google using `mahamulhasan38@gmail.com`
+   - Sign in with email `mahamulhasan38@gmail.com` and your `ADMIN_PASSWORD`
    - Verify you can access the admin interface
 
 2. **Test MongoDB connection**:
@@ -96,17 +98,18 @@ git push
   - **Solution**: Verify MongoDB Atlas allows Vercel IP addresses
   - **Solution**: Check username/password are URL-encoded in connection string
 
-### Firebase Authentication Issues
+### Authentication Issues
 - **Error**: "Use mahamulhasan38@gmail.com to access admin panel"
-  - **Solution**: Make sure you're signing in with the correct Google account
-  - **Solution**: Check Firebase console allows the authorized domain
+  - **Solution**: Make sure you're using the correct email address
+  - **Solution**: Check that ADMIN_PASSWORD is set in Vercel environment variables
+- **Error**: "Invalid password"
+  - **Solution**: Check that ADMIN_PASSWORD matches what you set in Vercel
 
 ### Build Issues
-- **Error**: Build fails with Firebase import errors
-  - **Solution**: Firebase now uses a Vite virtual module (`virtual:firebase-auth`)
-  - **Solution**: The virtual module hides Firebase import strings from TanStack Start's import protection plugin
-  - **Solution**: TypeScript declarations are in `src/virtual.d.ts` for type safety
-  - **Solution**: No Firebase imports are detected during the build process
+- **Error**: Build fails with import protection errors
+  - **Solution**: Authentication now uses server functions with `createServerFn`
+  - **Solution**: No Firebase or other client-side libraries are imported in server code
+  - **Solution**: All authentication logic is properly isolated in `src/lib/api/auth.functions.ts`
 
 - **Error**: Build fails with other errors
   - **Solution**: Check build logs in Vercel dashboard
@@ -115,20 +118,20 @@ git push
 
 ## 📋 Key Files Modified
 
-1. `vite.config.ts` - Added Vite virtual module for Firebase to bypass TanStack Start import protection
-2. `src/components/admin/AdminAccess.client.tsx` - Updated to use virtual module instead of direct Firebase imports
-3. `src/virtual.d.ts` - TypeScript declarations for the virtual module (NEW)
-4. `src/routes/admin.tsx` - Admin panel with user info display
-5. `src/lib/mongo.server.ts` - MongoDB connection (already robust)
-6. `README.md` - Updated documentation
-7. `.env.example` - Updated environment variables
-8. `VERCEL_DEPLOYMENT.md` - Updated deployment guide
+1. `src/lib/api/auth.functions.ts` - Server functions for session-based authentication (NEW)
+2. `src/components/admin/AdminAccess.client.tsx` - Updated to use session-based auth with email/password
+3. `src/routes/admin.tsx` - Admin panel with user info display
+4. `src/lib/mongo.server.ts` - MongoDB connection (already robust)
+5. `README.md` - Updated documentation for session-based auth
+6. `.env.example` - Updated environment variables to include ADMIN_PASSWORD
+7. `VERCEL_DEPLOYMENT.md` - Updated deployment guide
+8. `vite.config.ts` - Vercel Nitro preset
 9. `vercel.json` - Build configuration
 10. `DEPLOYMENT_CHECKLIST.md` - This deployment checklist
 
 ## ✨ Features Now Working
 
-- ✅ Firebase Google Authentication for admin panel
+- ✅ Session-based authentication for admin panel
 - ✅ Email restriction to mahamulhasan38@gmail.com only
 - ✅ MongoDB connection status display in admin panel
 - ✅ Channel management (add/edit/delete/reorder)
@@ -136,7 +139,7 @@ git push
 - ✅ Logout functionality
 - ✅ Vercel deployment configuration
 - ✅ MongoDB connection pooling for serverless functions
-- ✅ Firebase virtual module to bypass TanStack Start import protection
+- ✅ No Firebase imports = no TanStack Start import protection errors
 
 ## 🎯 Next Steps
 
@@ -148,11 +151,12 @@ git push
 2. **Configure Vercel environment variables**:
    - Add MONGODB_URI to Vercel project settings
    - Add MONGODB_DB (optional, defaults to wc2026)
+   - Add ADMIN_PASSWORD (your admin password)
 
 3. **Deploy and test**:
    - Push to GitHub
    - Monitor Vercel deployment
-   - Test admin panel with Google sign-in
+   - Test admin panel with email/password login
    - Verify MongoDB connection status
    - Test channel management features
 
@@ -161,5 +165,4 @@ git push
 If you encounter issues:
 - Check Vercel build logs
 - Check MongoDB Atlas logs
-- Verify Firebase console settings
 - Review this checklist for common solutions
