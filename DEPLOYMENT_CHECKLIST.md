@@ -61,19 +61,18 @@ git commit -m "Replace Firebase auth with session-based auth to fix TanStack Sta
 git push
 ```
 
-### 2. Configure Vercel
-1. Go to your Vercel project dashboard
-2. Add environment variables:
+### 2. Deploy to Vercel
+1. Go to [vercel.com](https://vercel.com) and sign in
+2. Click "Add New" → "Project"
+3. Import your GitHub repository: `ridoy-mahmud/Fifa26_LiveTv`
+4. Vercel will automatically detect the framework (TanStack Start)
+5. Add environment variables:
    - `MONGODB_URI` (your MongoDB connection string)
    - `MONGODB_DB` (default: wc2026)
    - `ADMIN_PASSWORD` (your admin password)
-3. Make sure variables are set for **Production** environment
+6. Click "Deploy"
 
-### 3. Deploy
-- Vercel will automatically deploy when you push to GitHub
-- Monitor the build logs for any errors
-
-### 4. Post-Deployment Testing
+### 3. Post-Deployment Testing
 1. **Test admin panel access**:
    - Navigate to `/admin`
    - Sign in with email `mahamulhasan38@gmail.com` and your `ADMIN_PASSWORD`
