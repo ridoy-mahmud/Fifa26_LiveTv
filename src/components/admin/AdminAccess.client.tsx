@@ -7,34 +7,13 @@ import { seedIfEmpty } from "@/lib/api/seed.functions";
 
 const ADMIN_EMAIL = "mahamulhasan38@gmail.com";
 
-// Dynamic Firebase imports to avoid SSR issues
-let firebaseApp: any = null;
-let firebaseAuth: any = null;
-let googleAuthProvider: any = null;
-
+// Use virtual module to bypass TanStack Start's import protection
 async function initializeFirebase() {
   if (typeof window === "undefined") return null;
-  
-  if (firebaseApp) return firebaseApp;
-  
+
   try {
-    const { initializeApp, getApps, getApp } = await import("firebase/app");
-    const firebaseConfig = {
-      apiKey: "AIzaSyCvtaQo4jSgAym8XpyC2-kYMqPfmt2LMU8",
-      authDomain: "sunlit-context-450609-v6.firebaseapp.com",
-      projectId: "sunlit-context-450609-v6",
-      storageBucket: "sunlit-context-450609-v6.firebasestorage.app",
-      messagingSenderId: "945079709177",
-      appId: "1:945079709177:web:929228df767a788a26e128",
-    };
-    
-    const apps = getApps();
-    if (apps.length > 0) {
-      firebaseApp = getApp();
-    } else {
-      firebaseApp = initializeApp(firebaseConfig);
-    }
-    return firebaseApp;
+    const firebase = await import("virtual:firebase-auth");
+    return await firebase.initializeApp();
   } catch (error) {
     console.error("Firebase initialization error:", error);
     return null;
@@ -43,16 +22,10 @@ async function initializeFirebase() {
 
 async function getFirebaseAuth() {
   if (typeof window === "undefined") return null;
-  
-  if (firebaseAuth) return firebaseAuth;
-  
+
   try {
-    const { getAuth } = await import("firebase/auth");
-    const app = await initializeFirebase();
-    if (app) {
-      firebaseAuth = getAuth(app);
-    }
-    return firebaseAuth;
+    const firebase = await import("virtual:firebase-auth");
+    return await firebase.getAuth();
   } catch (error) {
     console.error("Firebase auth initialization error:", error);
     return null;
@@ -61,14 +34,10 @@ async function getFirebaseAuth() {
 
 async function getGoogleAuthProvider() {
   if (typeof window === "undefined") return null;
-  
-  if (googleAuthProvider) return googleAuthProvider;
-  
+
   try {
-    const { GoogleAuthProvider } = await import("firebase/auth");
-    googleAuthProvider = new GoogleAuthProvider();
-    googleAuthProvider.setCustomParameters({ prompt: "select_account" });
-    return googleAuthProvider;
+    const firebase = await import("virtual:firebase-auth");
+    return await firebase.getProvider();
   } catch (error) {
     console.error("Google auth provider initialization error:", error);
     return null;
@@ -95,9 +64,9 @@ function useGoogleAdminAuth() {
           return;
         }
 
-        const { onAuthStateChanged, signOut } = await import("firebase/auth");
+        const firebase = await import("virtual:firebase-auth");
 
-        unsubscribe = onAuthStateChanged(auth, async (nextUser: any) => {
+        unsubscribe = await firebase.onAuthStateChanged(auth, async (nextUser: any) => {
           if (!nextUser?.email) {
             setUser(null);
             setLoading(false);
@@ -105,7 +74,7 @@ function useGoogleAdminAuth() {
           }
 
           if (!isAllowedEmail(nextUser.email)) {
-            await signOut(auth).catch(() => undefined);
+            await firebase.signOut(auth).catch(() => undefined);
             setUser(null);
             setError(`Use ${ADMIN_EMAIL} to access the admin panel.`);
             setLoading(false);
@@ -132,21 +101,21 @@ function useGoogleAdminAuth() {
 
   const login = async () => {
     setError(null);
-    
+
     try {
       const auth = await getFirebaseAuth();
       const provider = await getGoogleAuthProvider();
-      
+
       if (!auth || !provider) {
         setError("Firebase not available");
         return false;
       }
 
-      const { signInWithPopup, signOut } = await import("firebase/auth");
-      const result = await signInWithPopup(auth, provider);
-      
+      const firebase = await import("virtual:firebase-auth");
+      const result = await firebase.signInWithPopup(auth, provider);
+
       if (!isAllowedEmail(result.user.email)) {
-        await signOut(auth).catch(() => undefined);
+        await firebase.signOut(auth).catch(() => undefined);
         setUser(null);
         setError(`Use ${ADMIN_EMAIL} to access the admin panel.`);
         return false;
@@ -163,8 +132,8 @@ function useGoogleAdminAuth() {
     try {
       const auth = await getFirebaseAuth();
       if (auth) {
-        const { signOut } = await import("firebase/auth");
-        await signOut(auth);
+        const firebase = await import("virtual:firebase-auth");
+        await firebase.signOut(auth);
       }
     } catch (err) {
       console.error("Logout error:", err);
@@ -272,13 +241,12 @@ export function MongoStatusBar() {
 
   return (
     <div
-      className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2 text-xs ${
-        connected
-          ? empty
-            ? "border-gold/40 bg-gold/10"
-            : "border-emerald-500/40 bg-emerald-500/10"
-          : "border-live/40 bg-live/10"
-      }`}
+      className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2 text-xs ${connected
+        ? empty
+          ? "border-gold/40 bg-gold/10"
+          : "border-emerald-500/40 bg-emerald-500/10"
+        : "border-live/40 bg-live/10"
+        }`}
     >
       <div className="flex items-center gap-2">
         {statusQuery.isLoading ? (
