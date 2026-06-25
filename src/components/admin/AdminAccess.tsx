@@ -92,7 +92,7 @@ export function AdminAccessGate({ children }: { children: ReactNode }) {
             </div>
             <h2 className="mt-3 font-display text-2xl font-bold">Admin sign in</h2>
             <p className="text-sm text-muted-foreground">
-              Sign in with your admin credentials to access the panel.
+              Sign in with email <span className="font-semibold text-foreground">{ADMIN_EMAIL}</span> and your admin password.
             </p>
           </div>
 
@@ -190,13 +190,12 @@ export function MongoStatusBar() {
 
   return (
     <div
-      className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2 text-xs ${
-        connected
+      className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2 text-xs ${connected
           ? empty
             ? "border-gold/40 bg-gold/10"
             : "border-emerald-500/40 bg-emerald-500/10"
           : "border-live/40 bg-live/10"
-      }`}
+        }`}
     >
       <div className="flex items-center gap-2">
         {statusQuery.isLoading ? (
