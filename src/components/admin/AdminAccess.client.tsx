@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Database, Loader2, RefreshCw, ShieldCheck, ShieldAlert, LogOut } from "lucide-react";
@@ -20,6 +20,7 @@ function useGoogleAdminAuth() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const unsubscribeRef = useRef<any>(null);
 
   useEffect(() => {
     // Only run on client side
@@ -27,8 +28,6 @@ function useGoogleAdminAuth() {
       setLoading(false);
       return;
     }
-
-    let unsubscribe: any = null;
 
     const setupAuth = async () => {
       try {
@@ -42,7 +41,7 @@ function useGoogleAdminAuth() {
         }
 
         // Listen to auth state changes
-        unsubscribe = onAuthStateChanged((nextUser: any) => {
+        unsubscribeRef.current = await onAuthStateChanged((nextUser: any) => {
           if (!nextUser?.email) {
             setUser(null);
             setLoading(false);
@@ -63,7 +62,10 @@ function useGoogleAdminAuth() {
     setupAuth();
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
     };
   }, []);
 
