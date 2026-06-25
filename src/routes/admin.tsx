@@ -21,13 +21,13 @@ import { useChannels, useChannelMutations, parseCsv } from "@/lib/channels-store
 import { FALLBACK_LOGO, ALL_GROUPS, type Channel, type ChannelGroup } from "@/lib/channels-data";
 
 const AdminAccessGate = lazy(() =>
-  import("@/components/admin/AdminAccess.client").then((mod) => ({ default: mod.AdminAccessGate })),
+  import("@/components/admin/AdminAccess").then((mod) => ({ default: mod.AdminAccessGate })),
 );
 const MongoStatusBar = lazy(() =>
-  import("@/components/admin/AdminAccess.client").then((mod) => ({ default: mod.MongoStatusBar })),
+  import("@/components/admin/AdminAccess").then((mod) => ({ default: mod.MongoStatusBar })),
 );
 const AdminLogout = lazy(() =>
-  import("@/components/admin/AdminAccess.client").then((mod) => ({ default: mod.AdminLogout })),
+  import("@/components/admin/AdminAccess").then((mod) => ({ default: mod.AdminLogout })),
 );
 
 export const Route = createFileRoute("/admin")({

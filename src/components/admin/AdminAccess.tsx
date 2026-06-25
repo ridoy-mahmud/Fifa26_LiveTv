@@ -11,7 +11,7 @@ import {
   signInWithGoogle,
   signOut as firebaseSignOut,
   onAuthStateChanged,
-} from "@/lib/firebase-auth.client";
+} from "@/lib/firebase-auth";
 import { Chrome } from "lucide-react";
 
 const ADMIN_EMAIL = "mahamulhasan38@gmail.com";
@@ -32,9 +32,13 @@ function useGoogleAdminAuth() {
     const setupAuth = async () => {
       try {
         // Initialize Firebase on client only
-        await initializeFirebase();
-        const auth = await getFirebaseAuth();
+        const app = await initializeFirebase();
+        if (!app) {
+          setLoading(false);
+          return;
+        }
 
+        const auth = await getFirebaseAuth();
         if (!auth) {
           setLoading(false);
           return;

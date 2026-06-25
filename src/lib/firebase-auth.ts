@@ -1,3 +1,5 @@
+import { createClientOnlyFn } from "@tanstack/react-start";
+
 const ADMIN_EMAIL = "mahamulhasan38@gmail.com";
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCvtaQo4jSgAym8XpyC2-kYMqPfmt2LMU8",
@@ -16,7 +18,7 @@ function isAllowedEmail(email: string) {
 }
 
 // Initialize Firebase - client only
-export async function initializeFirebase() {
+export const initializeFirebase = createClientOnlyFn(async () => {
   if (firebaseApp) return firebaseApp;
 
   try {
@@ -27,10 +29,10 @@ export async function initializeFirebase() {
     console.error("Firebase initialization error:", error);
     throw error;
   }
-}
+});
 
 // Get Auth instance - client only
-export async function getFirebaseAuth() {
+export const getFirebaseAuth = createClientOnlyFn(async () => {
   if (firebaseAuth) return firebaseAuth;
 
   try {
@@ -42,10 +44,10 @@ export async function getFirebaseAuth() {
     console.error("Firebase auth initialization error:", error);
     throw error;
   }
-}
+});
 
 // Get Google Provider - client only
-export async function getGoogleProvider() {
+export const getGoogleProvider = createClientOnlyFn(async () => {
   try {
     const { GoogleAuthProvider } = await import("firebase/auth");
     return new GoogleAuthProvider();
@@ -53,10 +55,10 @@ export async function getGoogleProvider() {
     console.error("Google provider error:", error);
     throw error;
   }
-}
+});
 
 // Sign in with Google - client only
-export async function signInWithGoogle() {
+export const signInWithGoogle = createClientOnlyFn(async () => {
   try {
     const { signInWithPopup } = await import("firebase/auth");
     const auth = await getFirebaseAuth();
@@ -73,10 +75,10 @@ export async function signInWithGoogle() {
     console.error("Google sign-in error:", error);
     throw error;
   }
-}
+});
 
 // Sign out - client only
-export async function signOut() {
+export const signOut = createClientOnlyFn(async () => {
   try {
     const { signOut: firebaseSignOut } = await import("firebase/auth");
     const auth = await getFirebaseAuth();
@@ -85,24 +87,18 @@ export async function signOut() {
     console.error("Sign out error:", error);
     throw error;
   }
-}
+});
 
 // Listen to auth state changes - client only
-export async function onAuthStateChanged(callback: (user: any) => void) {
-  try {
-    const { onAuthStateChanged: firebaseOnAuthStateChanged } = await import("firebase/auth");
-    const auth = await getFirebaseAuth();
-    const unsubscribe = firebaseOnAuthStateChanged(auth, (user: any) => {
-      if (user?.email && !isAllowedEmail(user.email)) {
-        signOut().catch(console.error);
-        callback(null);
-      } else {
-        callback(user);
-      }
-    });
-    return unsubscribe;
-  } catch (error) {
-    console.error("Auth state listener error:", error);
-    throw error;
-  }
-}
+export const onAuthStateChanged = createClientOnlyFn((callback: (user: any) => void) => {
+  const { onAuthStateChanged: firebaseOnAuthStateChanged } = require("firebase/auth");
+  const auth = getFirebaseAuth();
+  return firebaseOnAuthStateChanged(auth, (user: any) => {
+    if (user?.email && !isAllowedEmail(user.email)) {
+      signOut().catch(console.error);
+      callback(null);
+    } else {
+      callback(user);
+    }
+  });
+});
