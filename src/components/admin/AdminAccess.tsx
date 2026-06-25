@@ -22,6 +22,12 @@ function useGoogleAdminAuth() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Only run on client side
+    if (typeof window === "undefined") {
+      setLoading(false);
+      return;
+    }
+
     let unsubscribe: any = null;
 
     const setupAuth = async () => {
