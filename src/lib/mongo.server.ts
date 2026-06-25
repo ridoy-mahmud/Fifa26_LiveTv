@@ -1,5 +1,3 @@
-import * as os from "node:os";
-
 // Server-only MongoDB client singleton.
 // The `.server.ts` suffix prevents Vite from bundling this file into the
 // client — values here never reach the browser.
@@ -94,14 +92,6 @@ async function createClient(): Promise<import("mongodb").MongoClient> {
     },
     // TLS is always required by Atlas; make it explicit
     tls: true,
-    runtimeAdapters: {
-      os: {
-        release: os.release,
-        platform: os.platform,
-        arch: os.arch,
-        type: os.type,
-      },
-    },
   });
   return client.connect();
 }

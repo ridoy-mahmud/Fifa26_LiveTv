@@ -90,9 +90,9 @@ export const signOut = createClientOnlyFn(async () => {
 });
 
 // Listen to auth state changes - client only
-export const onAuthStateChanged = createClientOnlyFn((callback: (user: any) => void) => {
-  const { onAuthStateChanged: firebaseOnAuthStateChanged } = require("firebase/auth");
-  const auth = getFirebaseAuth();
+export const onAuthStateChanged = createClientOnlyFn(async (callback: (user: any) => void) => {
+  const { onAuthStateChanged: firebaseOnAuthStateChanged } = await import("firebase/auth");
+  const auth = await getFirebaseAuth();
   return firebaseOnAuthStateChanged(auth, (user: any) => {
     if (user?.email && !isAllowedEmail(user.email)) {
       signOut().catch(console.error);
