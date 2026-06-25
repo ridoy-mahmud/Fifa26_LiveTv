@@ -21,13 +21,13 @@ import { useChannels, useChannelMutations, parseCsv } from "@/lib/channels-store
 import { FALLBACK_LOGO, ALL_GROUPS, type Channel, type ChannelGroup } from "@/lib/channels-data";
 
 const AdminAccessGate = lazy(() =>
-  import("@/components/admin/AdminAccess.client").then((mod) => ({ default: mod.AdminAccessGate })),
+  import("@/components/admin/AdminAccess").then((mod) => ({ default: mod.AdminAccessGate })),
 );
 const MongoStatusBar = lazy(() =>
-  import("@/components/admin/AdminAccess.client").then((mod) => ({ default: mod.MongoStatusBar })),
+  import("@/components/admin/AdminAccess").then((mod) => ({ default: mod.MongoStatusBar })),
 );
 const AdminLogout = lazy(() =>
-  import("@/components/admin/AdminAccess.client").then((mod) => ({ default: mod.AdminLogout })),
+  import("@/components/admin/AdminAccess").then((mod) => ({ default: mod.AdminLogout })),
 );
 
 export const Route = createFileRoute("/admin")({
@@ -132,259 +132,257 @@ function AdminPage() {
     >
       <AdminAccessGate>
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      {/* Header */}
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <span className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Admin</span>
-          <h1 className="mt-1 font-display text-3xl font-bold sm:text-4xl">Channel manager</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            <span className="text-foreground font-semibold">{channels.length}</span> channels ·{" "}
-            <span className="text-gold font-semibold">{totalFeatured}</span> in Top 10 ·{" "}
-            <span className="text-muted-foreground">{filtered.length} shown</span>
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Suspense fallback={<div className="h-9 w-20" />}>
-            <AdminLogout />
-          </Suspense>
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold transition hover:bg-secondary">
-            <Upload className="h-4 w-4" /> Import JSON/CSV
-            <input
-              type="file"
-              accept=".json,.csv"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) onFile(f);
-                e.currentTarget.value = "";
+          {/* Header */}
+          <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Admin</span>
+              <h1 className="mt-1 font-display text-3xl font-bold sm:text-4xl">Channel manager</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                <span className="text-foreground font-semibold">{channels.length}</span> channels ·{" "}
+                <span className="text-gold font-semibold">{totalFeatured}</span> in Top 10 ·{" "}
+                <span className="text-muted-foreground">{filtered.length} shown</span>
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Suspense fallback={<div className="h-9 w-20" />}>
+                <AdminLogout />
+              </Suspense>
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold transition hover:bg-secondary">
+                <Upload className="h-4 w-4" /> Import JSON/CSV
+                <input
+                  type="file"
+                  accept=".json,.csv"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) onFile(f);
+                    e.currentTarget.value = "";
+                  }}
+                />
+              </label>
+              <button
+                onClick={() => {
+                  if (confirm("Reset all channels to defaults?")) mutations.reset.mutate();
+                }}
+                className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold transition hover:bg-secondary"
+              >
+                <RotateCcw className="h-4 w-4" /> Reset
+              </button>
+            </div>
+          </header>
+
+          <div className="mb-4">
+            <MongoStatusBar />
+          </div>
+
+          {/* Add channel form */}
+          <div className="mt-4">
+            <AddChannelForm
+              onAdd={async (c) => {
+                try {
+                  await mutations.upsert.mutateAsync(c);
+                } catch (e) {
+                  alert(e instanceof Error ? e.message : "Add failed");
+                }
               }}
+              disabled={mutations.upsert.isPending}
             />
-          </label>
-          <button
-            onClick={() => {
-              if (confirm("Reset all channels to defaults?")) mutations.reset.mutate();
-            }}
-            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold transition hover:bg-secondary"
-          >
-            <RotateCcw className="h-4 w-4" /> Reset
-          </button>
-        </div>
-      </header>
-
-      <div className="mb-4">
-        <MongoStatusBar />
-      </div>
-
-      {/* Add channel form */}
-      <div className="mt-4">
-        <AddChannelForm
-          onAdd={async (c) => {
-            try {
-              await mutations.upsert.mutateAsync(c);
-            } catch (e) {
-              alert(e instanceof Error ? e.message : "Add failed");
-            }
-          }}
-          disabled={mutations.upsert.isPending}
-        />
-      </div>
-
-      {/* Filters bar */}
-      <div className="mt-6 space-y-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search channels…"
-              className="w-full rounded-lg border border-border bg-card py-2 pl-9 pr-3 text-sm outline-none focus:border-primary"
-            />
-            {q && (
-              <button
-                onClick={() => setQ("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
           </div>
-          <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Sort:
-            </span>
-            <SortBtn k="order" label="Order" />
-            <SortBtn k="name" label="Name" />
-            <SortBtn k="group" label="Group" />
-          </div>
-        </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          {(["All", "★ Top", ...ALL_GROUPS] as const).map((g) => {
-            const count =
-              g === "All"
-                ? channels.length
-                : g === "★ Top"
-                  ? totalFeatured
-                  : channels.filter((c) => c.group === g).length;
-            return (
-              <button
-                key={g}
-                onClick={() => setGroupFilter(g as typeof groupFilter)}
-                className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold transition ${
-                  groupFilter === g
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                }`}
-              >
-                {g} <span className="opacity-70">({count})</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="mt-4 overflow-hidden rounded-xl border border-border bg-card shadow-card">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-secondary/40 text-[11px] uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="w-8 px-2 py-2.5" />
-                <th className="px-3 py-2.5 text-left w-6">#</th>
-                <th className="px-3 py-2.5 text-left">Channel</th>
-                <th className="px-3 py-2.5 text-left hidden sm:table-cell">Group</th>
-                <th className="px-3 py-2.5 text-left hidden lg:table-cell">Stream URL</th>
-                <th className="px-3 py-2.5 text-center w-12">Top</th>
-                <th className="px-3 py-2.5 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                    Loading…
-                  </td>
-                </tr>
-              )}
-              {!isLoading && filtered.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                    No channels match your filter.
-                  </td>
-                </tr>
-              )}
-              {filtered.map((c) => {
-                const masterIdx = channels.findIndex((x) => x.id === c.id);
-                return (
-                  <tr
-                    key={c.id}
-                    className="group/row border-t border-border hover:bg-secondary/20 transition-colors"
+          {/* Filters bar */}
+          <div className="mt-6 space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Search channels…"
+                  className="w-full rounded-lg border border-border bg-card py-2 pl-9 pr-3 text-sm outline-none focus:border-primary"
+                />
+                {q && (
+                  <button
+                    onClick={() => setQ("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
-                    <td className="px-2 py-2 text-muted-foreground/30 group-hover/row:text-muted-foreground">
-                      <GripVertical className="h-4 w-4" />
-                    </td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums">
-                      {masterIdx + 1}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-2.5">
-                        <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-background ring-1 ring-border">
-                          <img
-                            src={c.logo || FALLBACK_LOGO}
-                            alt=""
-                            loading="lazy"
-                            className="h-full w-full object-contain p-0.5"
-                            onError={(e) =>
-                              ((e.currentTarget as HTMLImageElement).src = FALLBACK_LOGO)
-                            }
-                          />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-semibold leading-tight truncate max-w-[160px]">
-                            {c.name}
-                          </div>
-                          <div className="text-[10px] text-muted-foreground sm:hidden">
-                            {c.group}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 hidden sm:table-cell">
-                      <GroupBadge group={c.group} />
-                    </td>
-                    <td className="px-3 py-2 hidden lg:table-cell max-w-[240px]">
-                      <span
-                        className="block truncate text-[11px] text-muted-foreground font-mono"
-                        title={c.url}
-                      >
-                        {c.url}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <button
-                        onClick={() => mutations.toggleFeatured.mutate(c.id)}
-                        title={c.featured ? "Remove from Top 10" : "Add to Top 10"}
-                        disabled={mutations.toggleFeatured.isPending}
-                        className={`inline-flex h-7 w-7 items-center justify-center rounded-full transition ${
-                          c.featured
-                            ? "bg-gold/20 text-gold hover:bg-gold/30"
-                            : "bg-secondary text-muted-foreground hover:bg-secondary/80 hover:text-gold"
-                        }`}
-                      >
-                        <Star className={`h-3.5 w-3.5 ${c.featured ? "fill-gold" : ""}`} />
-                      </button>
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex items-center justify-end gap-0.5">
-                        <button
-                          onClick={() => moveInMaster(c.id, -1)}
-                          title="Move up"
-                          className="rounded p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                        >
-                          <ArrowUp className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => moveInMaster(c.id, 1)}
-                          title="Move down"
-                          className="rounded p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                        >
-                          <ArrowDown className="h-3.5 w-3.5" />
-                        </button>
-                        <EditChannelModal
-                          channel={c}
-                          onSave={async (next) => {
-                            try {
-                              await mutations.upsert.mutateAsync(next);
-                            } catch (e) {
-                              alert(e instanceof Error ? e.message : "Save failed");
-                            }
-                          }}
-                        />
-                        <button
-                          onClick={() => {
-                            if (confirm(`Delete "${c.name}"?`)) mutations.remove.mutate(c.id);
-                          }}
-                          disabled={mutations.remove.isPending}
-                          title="Delete"
-                          className="rounded p-1.5 text-muted-foreground hover:bg-live/10 hover:text-live"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Sort:
+                </span>
+                <SortBtn k="order" label="Order" />
+                <SortBtn k="name" label="Name" />
+                <SortBtn k="group" label="Group" />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {(["All", "★ Top", ...ALL_GROUPS] as const).map((g) => {
+                const count =
+                  g === "All"
+                    ? channels.length
+                    : g === "★ Top"
+                      ? totalFeatured
+                      : channels.filter((c) => c.group === g).length;
+                return (
+                  <button
+                    key={g}
+                    onClick={() => setGroupFilter(g as typeof groupFilter)}
+                    className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold transition ${groupFilter === g
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      }`}
+                  >
+                    {g} <span className="opacity-70">({count})</span>
+                  </button>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </div>
+          </div>
 
-      <p className="mt-4 text-xs text-muted-foreground">
-        <Tv className="mr-1 inline h-3 w-3" />
-        Edits persist in MongoDB Atlas. Changes are visible to all visitors.
-      </p>
+          {/* Table */}
+          <div className="mt-4 overflow-hidden rounded-xl border border-border bg-card shadow-card">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-secondary/40 text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <tr>
+                    <th className="w-8 px-2 py-2.5" />
+                    <th className="px-3 py-2.5 text-left w-6">#</th>
+                    <th className="px-3 py-2.5 text-left">Channel</th>
+                    <th className="px-3 py-2.5 text-left hidden sm:table-cell">Group</th>
+                    <th className="px-3 py-2.5 text-left hidden lg:table-cell">Stream URL</th>
+                    <th className="px-3 py-2.5 text-center w-12">Top</th>
+                    <th className="px-3 py-2.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {isLoading && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                        Loading…
+                      </td>
+                    </tr>
+                  )}
+                  {!isLoading && filtered.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                        No channels match your filter.
+                      </td>
+                    </tr>
+                  )}
+                  {filtered.map((c) => {
+                    const masterIdx = channels.findIndex((x) => x.id === c.id);
+                    return (
+                      <tr
+                        key={c.id}
+                        className="group/row border-t border-border hover:bg-secondary/20 transition-colors"
+                      >
+                        <td className="px-2 py-2 text-muted-foreground/30 group-hover/row:text-muted-foreground">
+                          <GripVertical className="h-4 w-4" />
+                        </td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums">
+                          {masterIdx + 1}
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-background ring-1 ring-border">
+                              <img
+                                src={c.logo || FALLBACK_LOGO}
+                                alt=""
+                                loading="lazy"
+                                className="h-full w-full object-contain p-0.5"
+                                onError={(e) =>
+                                  ((e.currentTarget as HTMLImageElement).src = FALLBACK_LOGO)
+                                }
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-semibold leading-tight truncate max-w-[160px]">
+                                {c.name}
+                              </div>
+                              <div className="text-[10px] text-muted-foreground sm:hidden">
+                                {c.group}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 hidden sm:table-cell">
+                          <GroupBadge group={c.group} />
+                        </td>
+                        <td className="px-3 py-2 hidden lg:table-cell max-w-[240px]">
+                          <span
+                            className="block truncate text-[11px] text-muted-foreground font-mono"
+                            title={c.url}
+                          >
+                            {c.url}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <button
+                            onClick={() => mutations.toggleFeatured.mutate(c.id)}
+                            title={c.featured ? "Remove from Top 10" : "Add to Top 10"}
+                            disabled={mutations.toggleFeatured.isPending}
+                            className={`inline-flex h-7 w-7 items-center justify-center rounded-full transition ${c.featured
+                                ? "bg-gold/20 text-gold hover:bg-gold/30"
+                                : "bg-secondary text-muted-foreground hover:bg-secondary/80 hover:text-gold"
+                              }`}
+                          >
+                            <Star className={`h-3.5 w-3.5 ${c.featured ? "fill-gold" : ""}`} />
+                          </button>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center justify-end gap-0.5">
+                            <button
+                              onClick={() => moveInMaster(c.id, -1)}
+                              title="Move up"
+                              className="rounded p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                            >
+                              <ArrowUp className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => moveInMaster(c.id, 1)}
+                              title="Move down"
+                              className="rounded p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                            >
+                              <ArrowDown className="h-3.5 w-3.5" />
+                            </button>
+                            <EditChannelModal
+                              channel={c}
+                              onSave={async (next) => {
+                                try {
+                                  await mutations.upsert.mutateAsync(next);
+                                } catch (e) {
+                                  alert(e instanceof Error ? e.message : "Save failed");
+                                }
+                              }}
+                            />
+                            <button
+                              onClick={() => {
+                                if (confirm(`Delete "${c.name}"?`)) mutations.remove.mutate(c.id);
+                              }}
+                              disabled={mutations.remove.isPending}
+                              title="Delete"
+                              className="rounded p-1.5 text-muted-foreground hover:bg-live/10 hover:text-live"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <p className="mt-4 text-xs text-muted-foreground">
+            <Tv className="mr-1 inline h-3 w-3" />
+            Edits persist in MongoDB Atlas. Changes are visible to all visitors.
+          </p>
         </div>
       </AdminAccessGate>
     </Suspense>
